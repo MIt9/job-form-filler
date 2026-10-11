@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Senior Frontend Developer — Example Co (demo form)</title>
+<style>
+  body { font: 16px/1.5 system-ui, sans-serif; background: #f6f7f9; color: #1f2430; margin: 0; }
+  main { max-width: 680px; margin: 32px auto; background: #fff; padding: 32px; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  h1 { margin: 0 0 4px; font-size: 26px; }
+  .meta { color: #667085; margin-bottom: 24px; }
+  label { display: block; font-weight: 600; margin: 18px 0 6px; }
+  .req::after { content: " *"; color: #d92d20; }
+  input, select, textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #cfd4dc; border-radius: 8px; font: inherit; }
+  textarea { min-height: 110px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  button { margin-top: 28px; padding: 12px 24px; border: 0; border-radius: 8px; background: #1f6feb; color: #fff; font: inherit; font-weight: 600; }
+  .note { margin-top: 16px; font-size: 13px; color: #667085; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Senior Frontend Developer</h1>
+  <div class="meta">Example Co · Remote · Full time</div>
+
+  <form id="application-form" onsubmit="return false">
+    <div class="row">
+      <div><label class="req" for="first_name">First name</label><input id="first_name" name="first_name" autocomplete="off" required></div>
+      <div><label class="req" for="last_name">Last name</label><input id="last_name" name="last_name" autocomplete="off" required></div>
+    </div>
+
+    <label class="req" for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="off" required>
+
+    <label class="req" for="phone">Phone</label>
+    <input id="phone" name="phone" type="tel" autocomplete="off" required>
+
+    <label for="location">Location (City)</label>
+    <input id="location" name="location" autocomplete="off">
+
+    <label for="resume">Resume/CV</label>
+    <input id="resume" name="resume" type="file">
+
+    <label for="linkedin">LinkedIn Profile</label>
+    <input id="linkedin" name="linkedin" type="url" autocomplete="off">
+
+    <label for="website">Website</label>
+    <input id="website" name="website" type="url" autocomplete="off">
+
+    <label class="req" for="authorized">Are you legally authorized to work in the United States?</label>
+    <select id="authorized" name="authorized" required>
+      <option value="">Select...</option><option>Yes</option><option>No</option>
+    </select>
+
+    <label class="req" for="sponsorship">Will you now or in the future require visa sponsorship?</label>
+    <select id="sponsorship" name="sponsorship" required>
+      <option value="">Select...</option><option>Yes</option><option>No</option>
+    </select>
+
+    <label class="req" for="why">Why do you want to work at Example Co?</label>
+    <textarea id="why" name="why" required></textarea>
+
+    <button type="button">Submit Application</button>
+    <p class="note">Demo form for Job Form Filler. Nothing is sent anywhere.</p>
+  </form>
+</main>
+</body>
+</html>
