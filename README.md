@@ -1,141 +1,74 @@
-# ⚡ Job Form Filler (0-Token & AI Hybrid)
+# ⚡ Job Form Filler
 
-Розширення для Google Chrome + опційний локальний міст (Local Bridge & MCP Server) для заповнення форм вакансій (Ashby, Greenhouse, Lever, Workable, LinkedIn Easy Apply та будь-які інші).
+Fill job application forms (Ashby, Greenhouse, Lever, Workable, LinkedIn Easy Apply and others) from your own local profile, in any language. Optionally let your AI assistant (Claude Code, Claude Desktop) answer only the custom questions.
 
-Замість того щоб віддавати ШІ весь DOM або скріншоти, розширення ділить поля на рівні:
-1. **Tier 1 (0 токенів)**: стандартні поля (ім'я, контакти, адреса, лінки, дозвіл на роботу, віза, релокація, notice period, зарплата, EEO, файл резюме) заповнюються **локально з вашого профілю**.
-2. **Tier 2 (мінімум токенів)**: ШІ отримує **лише** незаповнені питання (зі стабільними `fieldId` та варіантами відповідей) і стислий текст вакансії.
-3. **Tier 3 (людина)**: мотиваційні/поведінкові питання ШІ ніколи не пише — вони повертаються вам.
+🇺🇦 [Документація українською](README.uk.md)
 
----
+**Why it exists:** handing a raw DOM or screenshots to an AI for every form burns tokens. Job Form Filler splits fields into tiers:
 
-## 🚀 Швидкий старт (без мосту, без ШІ)
+1. **Tier 1, 0 tokens:** name, contacts, links, work authorization, notice period, EEO, resume file. Filled locally from your profile.
+2. **Tier 2, minimal tokens:** the AI gets only the unfilled questions plus a compact job summary.
+3. **Tier 3, you:** motivation and behavioural questions are never written by AI. They come back to you.
 
-1. `chrome://extensions/` → увімкніть **Developer mode** → **Load unpacked** → оберіть папку `extension/`.
-2. Відкрийте попап → вкладка **👤 Профіль** → заповніть дані → **💾 Зберегти**. Там же завантажте файл резюме (PDF/DOCX до 5 МБ).
-   - Або **⬆️ Імпорт** готового `profile.json` (формат — як у **⬇️ Експорт**; поля описані в `extension/shared/default-profile.js`).
-   - Або заповніть одну форму вручну й натисніть **🧠 Запам'ятати з цієї форми**: розпізнані стандартні поля потраплять у профіль.
-   - Або попросіть агента через MCP: *«заповни мій профіль у job-form-filler з мого резюме»* (тул `update_candidate_profile`).
+The final **Submit button is never clicked automatically.** You review and send.
 
-   Обидва автоматичні шляхи заповнюють лише порожні поля профілю. Розбіжності з уже збереженими значеннями показуються, але не застосовуються.
-3. Відкрийте форму вакансії → **⚡ Заповнити стандартні поля**. Попап покаже, яких даних бракує в профілі та які поля не вдалося заповнити.
+## Install
 
-Профіль і резюме зберігаються **лише локально** в `chrome.storage.local`. Розширення ніколи не перезаписує поля, які ви вже заповнили.
+### Option A: extension only (most people)
 
-### Формат профілю
+1. Install **Job Form Filler** from the Chrome Web Store *(link coming once the listing is approved)*. Until then: `chrome://extensions` → Developer mode → Load unpacked → pick the `extension/` folder.
+2. Open the popup → **Profile** tab → fill in your data and upload your resume (PDF/DOCX, up to 5 MB).
+3. Open an application form → **Fill standard fields**.
 
-```json
-{
-  "personal": { "firstName": "", "lastName": "", "email": "", "phoneCountryCode": "+380", "phone": "", "city": "", "country": "" },
-  "links": { "linkedin": "", "github": "", "website": "" },
-  "work": { "currentCompany": "", "currentTitle": "", "yearsOfExperience": "", "noticePeriod": "", "salaryExpectation": "" },
-  "legal": { "authorizedToWork": "Yes", "requiresSponsorship": "No", "willingToRelocate": "" },
-  "eeo": {},
-  "profiles": { "frontend-developer": { "title": "Senior Frontend Developer", "summary": "..." } },
-  "localized": { "uk": { "personal": { "firstName": "Дмитро", "city": "Вінниця" }, "work": { "noticePeriod": "2 тижні" } } }
-}
-```
+Your profile and resume stay in `chrome.storage.local`. Nothing is sent anywhere.
 
-Порожні EEO-поля (gender, ethnicity, veteran, disability) заповнюються варіантом «Decline to self-identify» мовою форми. `profiles` — необов'язкові варіанти ролі (обираються в попапі).
+### Option B: add an AI assistant (optional)
 
-Щоб додати нове стандартне поле: рядок у `PROFILE_FIELDS` (`extension/shared/default-profile.js`), правило в `FIELD_RULES` та значення в `profileValue` (`extension/content/content.js`).
+The MCP server lets Claude read the form, answer custom questions from your resume, and fill them in.
 
-### 🌍 Мови
-
-Підтримувані мови: **English, Українська, Polski, Deutsch, Français, Español, Italiano, Português, Nederlands**. Російська свідомо не підтримується.
-
-- **Форми** розпізнаються всіма цими мовами. Мова форми визначається за підписами полів (кирилиця → `uk`, польські літери → `pl`), а `<html lang>` використовується як запасний варіант. ATS часто лишають там `en`.
-- **Значення**: основний профіль заповнюється однією мовою, а для інших мов можна задати переклади (вкладка «Профіль» → «Переклади для форм іншими мовами», у JSON це `localized.<lang>`). На формі цією мовою спершу береться переклад. Назви країн («Ukraine» ⇄ «Україна» ⇄ «Ucraina») і «Так/Ні» перекладаються автоматично.
-- **«Запам'ятати з цієї форми»** на неанглійській формі записує значення, що відрізняються від профілю, як переклади цієї мови.
-- **ШІ** відповідає мовою форми (`get_active_job_form.language`). Tier 3 (особисті питання) розпізнається всіма цими мовами.
-- **Інтерфейс** перекладено тими самими мовами (португальська — `pt_BR` і `pt_PT`). Мова обирається за мовою браузера, за замовчуванням англійська (`extension/_locales/`). Щоб додати мову інтерфейсу, створіть `_locales/<lang>/messages.json` з тими самими ключами, що й в `uk`.
-- Щоб додати мову форм: по рядку в кожному правилі `FIELD_RULES` (`content.js`), мову в `FORM_LANGUAGES` (`default-profile.js`) і шаблони в `HUMAN_PATTERNS` (`server/ai-generator.js`).
-
----
-
-## 🔌 Міст і MCP (для Claude Code / AGY)
-
+**Claude Code:**
 ```bash
-npm install
-npm run bridge            # http://127.0.0.1:8765, ws://127.0.0.1:8765/ws
+claude mcp add job-form-filler -- npx -y job-form-filler
 ```
 
-Підключіть MCP-сервер (`~/.claude/mcp.json` або `claude mcp add`):
+**Claude Desktop / other MCP clients**, add to the MCP config:
 ```json
 {
   "mcpServers": {
-    "job-form-filler": {
-      "command": "node",
-      "args": ["/path/to/job-form-filler/bin/mcp.js"],
-      "env": { "RESUME_REPO_PATH": "/path/to/your/resume-repo" }
-    }
+    "job-form-filler": { "command": "npx", "args": ["-y", "job-form-filler"] }
   }
 }
 ```
 
-Агент отримує інструкції робочого циклу від самого MCP-сервера: `autofill_static_fields` → `get_active_job_form` → `get_candidate_profile` → `fill_job_form` → ви перевіряєте й натискаєте Submit → `get_submission_status`.
+Requires Node.js 18+. The popup's **Settings** tab shows whether the bridge is connected.
 
-### Змінні оточення (усі опційні)
+### Optional environment variables
 
-| Змінна | Що робить |
+| Variable | Purpose |
 |---|---|
-| `RESUME_REPO_PATH` | Папка з варіантами резюме: `<repo>/resume/<role>/*.md, *.pdf` або `<repo>/<role>/...`. За замовчуванням не задано (функція вимкнена). Дає варіанти ролей у попапі, PDF для завантаження і markdown-факти для ШІ. Назви файлів довільні (перевага `resume*`/`cv*`). |
-| `ANTHROPIC_API_KEY` | Кнопка «🤖 Згенерувати» в попапі відповідає на питання через Claude, спираючись лише на резюме. Без ключа відповідає тільки на те, що є в профілі. |
-| `BRIDGE_PORT` | Порт мосту (за замовчуванням 8765). |
-| `JFF_DATA_DIR` | Куди зберігати learned answers і заявки без репо (за замовчуванням `~/.job-form-filler`). |
+| `RESUME_REPO_PATH` | Folder with role-specific resumes (`<repo>/resume/<role>/*.md, *.pdf` or `<repo>/<role>/...`). Enables role variants, PDF upload and saving applications. Off by default. |
+| `ANTHROPIC_API_KEY` | Enables the popup's "Generate" button for custom questions, grounded in your resume. |
+| `BRIDGE_PORT` | Bridge port, default `8765`. |
+| `JFF_DATA_DIR` | Where saved answers live, default `~/.job-form-filler`. |
+| `JFF_EXTENSION_IDS` | Comma-separated extension IDs the bridge accepts. Set it to your extension ID. |
 
----
+Env vars go into the `env` block of your MCP config, e.g. `"env": { "RESUME_REPO_PATH": "/path/to/resumes" }`.
 
-## 🎯 Як це працює
+## Permissions
 
-### Крок 0: навігація — ваша відповідальність
-Відкрийте вкладку з формою самі (або іншим інструментом). Цей інструмент ніколи не переходить за URL.
+The extension asks only for the ATS domains above plus `localhost` for the optional bridge. **Work on any website** (Settings tab) is an opt-in extra permission for custom company career pages. See [docs/PRIVACY.md](docs/PRIVACY.md).
 
-### Попап
-- **⚡ Заповнити стандартні поля** — 0 токенів.
-- **🤖 Згенерувати через ШІ / Bridge** — відповіді на решту питань (потрібен міст).
-- **📋 Скопіювати промпт для CLI** — компактний промпт з `fieldId` і варіантами відповідей для будь-якого агента.
-- **💾 Зберегти в репо** — `job-posting.md` у `<role>/applications/<company>/` (або `~/.job-form-filler/applications/`).
-- **🧠 Запам'ятати з цієї форми** — стандартні поля, заповнені вручну, додаються в профіль (лише порожні слоти); відповіді на нестандартні питання зберігаються для наступних форм.
-
----
-
-## 🔒 Безпека та контроль
-
-### ❌ Submit — НІКОЛИ не натискається автоматично
-Це **навмисне архітектурне рішення безпеки**, а не відсутня фіча.
-
-- Жоден MCP-тул, команда bridge або дія попапу не може натиснути кнопку Submit / Apply.
-- Якщо майбутній контриб'ютор захоче додати `submit_form` — **не треба**: ризик випадкової подачі резюме на небажану вакансію є неприйнятним.
-- `get_submission_status` лише читає заголовок сторінки після того, як **ви** натиснули Submit.
-
-### 🧑 Tier 3 — Питання, що потребують людини
-Поведінкові («Розкажіть про випадок, коли…»), мотиваційні («Чому саме зараз?») та особистісні питання ніколи не заповнюються ШІ, навіть із `ANTHROPIC_API_KEY`. `get_active_job_form` позначає їх `humanRequired: true`.
-
-### Міст
-- Слухає лише `127.0.0.1`; приймає запити тільки від розширення (`chrome-extension://`) та локальних процесів без `Origin`. Веб-сторінки отримують 403 (захист від читання профілю й DNS-rebinding).
-- Персональні дані (learned answers, заявки) зберігаються поза папкою проєкту.
-
----
-
-## 🛠 MCP-інструменти
-
-| Інструмент | Опис |
-|---|---|
-| `autofill_static_fields` | Заповнює Tier 1 поля; повертає `filled`, `missingProfile`, `failed` |
-| `get_active_job_form` | Незаповнені питання (`fieldId`, `label`, `options`, `humanRequired`) + метадані вакансії |
-| `get_form_state` | **Поточні значення** всіх полів форми (заповнених і порожніх): перевірка після автозаповнення; паролі приховані, файли — імена, групи чекбоксів — позначені опції |
-| `click_button` | Просуває багатокрокову форму кнопкою **навігації** (Continue/Next/Apply Now/Продовжити/Далі): точний збіг мітки; Submit/Send/Apply/Delete/Pay та кнопки з такою aria-label відхиляються; фінальний Submit завжди натискає користувач |
-| `fill_job_form` | Вписує відповіді за `fieldId`; повертає `failed`, `notFound` |
-| `get_candidate_profile` | Профіль з розширення + markdown резюме обраного варіанту ролі |
-| `update_candidate_profile` | Записує дані в профіль розширення (лише відомі поля; наявні значення — тільки з `overwrite`) |
-| `save_job_application` | Зберігає `job-posting.md` (+ cover letter); використовуйте `log_application` для запису результату |
-| `get_job_posting` | Отримує повний текст, вимоги та питання вакансії серверно без браузера |
-| `log_application` | Логує результат заявки (submitted/skipped) до info/applications-log.md, профілю резюме та job-posting.md. Ідемпотентна за URL чи company+date. Підтримує dryRun |
-| `get_submission_status` | Перевіряє URL (`/confirm`, `/applied`, `/thank-you`, `/connect/dashboard`) і текст/заголовок після Submit; повертає `matchedBy` |
-
-## 🧪 Тести
+## Develop
 
 ```bash
+git clone https://github.com/MIt9/job-form-filler && cd job-form-filler
+npm install
 npm test
+npm run bridge   # http://127.0.0.1:8765
 ```
+
+More detail (profile format, MCP tools, workflow, safety model) in [README.uk.md](README.uk.md).
+
+## License
+
+MIT
