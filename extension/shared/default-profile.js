@@ -116,7 +116,11 @@ var PROFILE_KEY_PATHS = {
   howDidYouHear: "work.howDidYouHear",
   workAuthorization: "legal.authorizedToWork",
   sponsorship: "legal.requiresSponsorship",
-  relocation: "legal.willingToRelocate"
+  relocation: "legal.willingToRelocate",
+  gender: "eeo.gender",
+  ethnicity: "eeo.ethnicity",
+  veteran: "eeo.veteran",
+  disability: "eeo.disability"
 };
 
 function profileFieldLabel(path) {
