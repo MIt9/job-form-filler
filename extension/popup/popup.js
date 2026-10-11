@@ -49,6 +49,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (m) el.title = m;
   });
 
+  // Optional host access for sites outside the built-in ATS list (requested on click, revocable in chrome://extensions).
+  const allSites = { origins: ["<all_urls>"] };
+  const allowAllSites = document.getElementById("allow-all-sites");
+  chrome.permissions.contains(allSites, (ok) => { allowAllSites.checked = !!ok; });
+  allowAllSites.addEventListener("change", () => {
+    if (allowAllSites.checked) {
+      chrome.permissions.request(allSites, (granted) => { allowAllSites.checked = !!granted; });
+    } else {
+      chrome.permissions.remove(allSites);
+    }
+  });
+
   // State
   let activeTab = null;
   let jobData = null;

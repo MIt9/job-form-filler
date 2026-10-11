@@ -59,6 +59,7 @@
   "howTo1": { "message": "Start the bridge: <code>npm run bridge</code> in the project folder (port 8765)" },
   "howTo2": { "message": "Or connect the MCP server: <code>bin/mcp.js</code>" },
   "howTo3": { "message": "The assistant can then call <code>get_active_job_form</code> and <code>fill_job_form</code> itself." },
+  "allSitesLabel": { "message": "Work on any website (custom company career pages). Chrome will ask for permission." },
   "footer": { "message": "🔒 The final submit button is never clicked automatically." },
 
   "profileSaved": { "message": "Profile saved." },

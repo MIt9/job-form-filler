@@ -232,7 +232,7 @@ async function ensureContentScriptInjected(tab) {
   } catch (err) {
     throw new Error(
       "Failed to inject content script: " + err.message +
-        " (reload the extension in chrome://extensions and the tab; the extension needs <all_urls> host access to inject on this site)"
+        " (enable 'Work on any website' in the extension popup Settings tab, then reload the tab)"
     );
   }
 }

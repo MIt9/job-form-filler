@@ -11,7 +11,8 @@ console.log("▶ Testing manifest and content-script injection lists...");
 const js = manifest.content_scripts[0].js;
 assert.deepStrictEqual(js, ["shared/default-profile.js", "content/form-helpers.js", "content/content.js"]);
 for (const f of js) assert(fs.existsSync(path.join(ext, f)), `${f} exists`);
-assert(manifest.host_permissions.includes("<all_urls>"), "fallback injection needs <all_urls> host access");
+assert(!manifest.host_permissions.includes("<all_urls>"), "<all_urls> must stay optional (Web Store review)");
+assert(manifest.optional_host_permissions.includes("<all_urls>"), "fallback injection on other sites needs optional <all_urls>");
 assert(manifest.permissions.includes("scripting") && manifest.permissions.includes("tabs"));
 
 const list = JSON.stringify(js).replace(/"/g, '"');
