@@ -50,7 +50,6 @@ Requires Node.js 18+. The popup's **Settings** tab shows whether the bridge is c
 | Variable | Purpose |
 |---|---|
 | `RESUME_REPO_PATH` | Folder with role-specific resumes (`<repo>/resume/<role>/*.md, *.pdf` or `<repo>/<role>/...`). Enables role variants, PDF upload and saving applications. Off by default. |
-| `ANTHROPIC_API_KEY` | Enables the popup's "Generate" button for custom questions, grounded in your resume. |
 | `BRIDGE_PORT` | Bridge port, default `8765`. |
 | `JFF_DATA_DIR` | Where saved answers live, default `~/.job-form-filler`. |
 | `JFF_EXTENSION_IDS` | Comma-separated extension IDs the bridge accepts. Set it to your extension ID. |

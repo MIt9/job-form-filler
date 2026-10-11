@@ -2,7 +2,6 @@ const http = require("http");
 const fs = require("fs");
 const { WebSocketServer } = require("ws");
 const { loadProfiles, DEFAULT_RESUME_REPO_PATH } = require("./profile-loader");
-const { generateAnswers } = require("./ai-generator");
 const { saveApplication } = require("./app-saver");
 const { getLearnedAnswers, saveLearnedAnswers } = require("./learned-answers");
 
@@ -209,24 +208,6 @@ function startBridgeServer() {
         res.writeHead(500, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: err.message }));
       }
-      return;
-    }
-
-    // Generate answers for custom questions
-    if (url.pathname === "/api/generate-answers" && req.method === "POST") {
-      let body = "";
-      req.on("data", (chunk) => (body += chunk));
-      req.on("end", async () => {
-        try {
-          const payload = JSON.parse(body || "{}");
-          const result = await generateAnswers(payload);
-          res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify(result));
-        } catch (err) {
-          res.writeHead(500, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ error: err.message }));
-        }
-      });
       return;
     }
 

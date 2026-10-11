@@ -90,7 +90,7 @@
   "bridgeNotRunning": { "message": "⚠️ The Local Bridge is not running. Start it or copy the CLI prompt below." },
   "generating": { "message": "🤖 Generating answers through the local agent..." },
   "needYourAnswer": { "message": "Need your own answer:\n$1" },
-  "unanswered": { "message": "No answer (no ANTHROPIC_API_KEY or no facts in the resume):\n$1" },
+  "unanswered": { "message": "No answer (no facts in your profile or resume):\n$1" },
   "aiFilledN": { "message": "✅ AI filled $1 fields! Review before submitting." },
   "answersNoFields": { "message": "Answers were generated, but no matching form fields were found." },
   "serverNoAnswers": { "message": "The server returned no answers." },

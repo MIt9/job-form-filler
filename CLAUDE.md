@@ -35,7 +35,7 @@ job-form-filler/
 │   ├── profile-loader.js  # Role variants reader from RESUME_REPO_PATH
 │   ├── job-posting.js     # Server-side ATS & generic job posting fetcher
 │   ├── app-saver.js       # Application saver for RESUME_REPO_PATH
-│   └── ai-generator.js    # Grounded answer generator
+│   └── human-questions.js # Tier 3 (human-required) question detector
 ├── bin/
 │   ├── bridge.js          # CLI executable to start bridge server
 │   └── mcp.js             # CLI executable to run MCP server

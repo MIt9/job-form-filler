@@ -13,10 +13,8 @@ fs.mkdirSync(path.join(repo, "resume", "empty-folder"));
 
 process.env.RESUME_REPO_PATH = repo;
 process.env.JFF_DATA_DIR = path.join(repo, "data");
-delete process.env.ANTHROPIC_API_KEY;
 
 const { loadProfiles, resolveDefaultResumeRepoPath } = require("../server/profile-loader");
-const { generateAnswers } = require("../server/ai-generator");
 const { saveApplication } = require("../server/app-saver");
 
 console.log("▶ Testing Profile Loader...");
@@ -47,43 +45,9 @@ const savedNoRole = saveApplication({ company: "../../Evil" });
 assert(savedNoRole.savedPath.startsWith(path.join(repo, "data", "applications")), "Company name cannot escape the data dir");
 console.log("✔ App saver tests passed!");
 
-console.log("▶ Testing AI Generator (grounding, no fabricated answers)...");
 (async () => {
-  const candidateData = {
-    personal: { firstName: "Jane", lastName: "Doe" },
-    work: { noticePeriod: "1 month", yearsOfExperience: "8" },
-    legal: { requiresSponsorship: "No", authorizedToWork: "Yes" }
-  };
-  const result = await generateAnswers({
-    jobTitle: "Frontend Engineer",
-    company: "Acme Corp",
-    profileKey: "frontend-developer",
-    candidateData,
-    questions: [
-      { fieldId: "q_visa", label: "Do you require visa sponsorship?", type: "radio-group", options: ["Yes", "No"] },
-      { fieldId: "q_auth", label: "Are you authorized to work in the EU?", type: "select" },
-      { fieldId: "q_notice", label: "Notice period", type: "text" },
-      { fieldId: "q_years", label: "Total years of experience", type: "text" },
-      { fieldId: "q_salary", label: "Salary expectations", type: "text" },
-      { fieldId: "q_time", label: "Tell us about a time you disagreed with your manager", type: "textarea" },
-      { fieldId: "q_cover", label: "Cover Letter", type: "textarea" }
-    ]
-  });
-
-  assert.strictEqual(result.success, true);
-  assert.strictEqual(result.answers.q_visa, "No");
-  assert.strictEqual(result.answers.q_auth, "Yes");
-  assert.strictEqual(result.answers.q_notice, "1 month");
-  assert.strictEqual(result.answers.q_years, "8");
-  assert(!("q_salary" in result.answers), "Missing profile value must stay unanswered, not invented");
-  assert(!("q_cover" in result.answers), "No canned cover letter without an LLM");
-  assert.deepStrictEqual(result.humanRequiredQuestions.map((q) => q.fieldId), ["q_time"]);
-  assert.deepStrictEqual(result.unansweredQuestions.map((q) => q.fieldId).sort(), ["q_cover", "q_salary"]);
-
-  console.log("✔ AI Generator tests passed!");
-
-  console.log("▶ Testing multilingual Tier 3 detection and localized profile answers...");
-  const { isHumanRequiredQuestion } = require("../server/ai-generator");
+  console.log("▶ Testing multilingual Tier 3 detection...");
+  const { isHumanRequiredQuestion } = require("../server/human-questions");
   [
     "Розкажіть про випадок, коли ви не погодилися з командою",
     "Чому саме наша компанія?",
@@ -99,22 +63,8 @@ console.log("▶ Testing AI Generator (grounding, no fabricated answers)...");
     assert(!isHumanRequiredQuestion({ label }), `Not Tier 3: ${label}`)
   );
 
-  const uk = await generateAnswers({
-    company: "Acme",
-    language: "uk",
-    candidateData: { ...candidateData, localized: { uk: { work: { noticePeriod: "1 місяць" } } } },
-    questions: [
-      { fieldId: "visa", label: "Чи потрібна вам віза?", type: "radio-group", options: ["Так", "Ні"] },
-      { fieldId: "notice", label: "Період попередження", type: "text" },
-      { fieldId: "visual", label: "Досвід з візуальним дизайном", type: "textarea" }
-    ]
-  });
-  assert.strictEqual(uk.answers.visa, "No", "Yes/No is matched to Так/Ні by the extension");
-  assert.strictEqual(uk.answers.notice, "1 місяць", "Localized profile value wins on a Ukrainian form");
-  assert(!("visual" in uk.answers), "'візуальний' must not be read as a visa question");
-
   fs.rmSync(repo, { recursive: true, force: true });
-  console.log("✔ Multilingual generator tests passed!");
+  console.log("✔ Multilingual Tier 3 tests passed!");
 })().catch((err) => {
   console.error(err);
   process.exit(1);

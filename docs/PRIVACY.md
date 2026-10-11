@@ -14,7 +14,7 @@ Job Form Filler is a Chrome extension (and optional local MCP server) that fills
 ## What is sent, and to whom
 - **The extension itself sends no data to the developer or any third-party server.** It has no analytics, tracking, ads or remote code.
 - It communicates only with a **local bridge on your own computer** (`127.0.0.1`, default port 8765), and only if you chose to run it.
-- If you connect an AI assistant (for example Claude through MCP) or set `ANTHROPIC_API_KEY` for the bridge, the unfilled custom questions and a job summary go to **that provider under your own account and its terms**. This is optional and off by default.
+- If you connect an AI assistant (for example Claude through MCP) or use the copied prompt in an AI tool, the unfilled custom questions and a job summary go to **that provider under your own account and its terms**. This is optional and off by default.
 
 ## Permissions
 | Permission | Why |

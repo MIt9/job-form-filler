@@ -7,7 +7,7 @@ const {
 
 const { loadProfiles } = require("./profile-loader.js");
 const { saveApplication } = require("./app-saver.js");
-const { isHumanRequiredQuestion } = require("./ai-generator.js");
+const { isHumanRequiredQuestion } = require("./human-questions.js");
 const { getJobPosting } = require("./job-posting.js");
 const { startBridgeServer } = require("./bridge-server.js");
 const { logApplication } = require("./log-application.js");

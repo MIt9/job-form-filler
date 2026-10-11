@@ -85,7 +85,7 @@
   "bridgeNotRunning": { "message": "⚠️ De Local Bridge draait niet. Start hem of kopieer de CLI-prompt." },
   "generating": { "message": "🤖 Antwoorden genereren via de lokale agent..." },
   "needYourAnswer": { "message": "Hebben jouw eigen antwoord nodig:\n$1" },
-  "unanswered": { "message": "Geen antwoord (geen ANTHROPIC_API_KEY of geen feiten in het cv):\n$1" },
+  "unanswered": { "message": "Geen antwoord:\n$1" },
   "aiFilledN": { "message": "✅ AI heeft $1 velden ingevuld! Controleer voor het verzenden." },
   "answersNoFields": { "message": "Antwoorden gegenereerd, maar geen overeenkomende velden gevonden." },
   "serverNoAnswers": { "message": "De server gaf geen antwoorden terug." },

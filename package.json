@@ -25,7 +25,6 @@
     "test": "node test/test-profiles.js && node test/test-bridge-command.js && node test/test-field-classification.js && node test/test-profile-merge.js && node test/test-replace-field-value.js && node test/test-job-posting.js && node test/log-application.test.js && node test/test-log-application-real-layout.js && node test/test-form-helpers.js && node test/test-form-integration.js && node test/test-job-posting-encoding.js && node test/test-manifest.js && node test/test-click-and-tabs.js && node test/test-bridge-port-reuse.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.131.0",
     "@modelcontextprotocol/sdk": "^1.2.0",
     "ws": "^8.18.0"
   },

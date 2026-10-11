@@ -14,7 +14,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const actionMessage = document.getElementById("action-message");
 
   const btnAutofillStatic = document.getElementById("btn-autofill-static");
-  const btnFillAi = document.getElementById("btn-fill-ai");
   const btnCopyPrompt = document.getElementById("btn-copy-prompt");
   const btnSaveRepo = document.getElementById("btn-save-repo");
   const btnReconnectBridge = document.getElementById("btn-reconnect-bridge");
@@ -484,81 +483,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     } catch (err) {
       showMessage(t("pageAccessError", err.message), "error");
-    }
-  });
-
-  // 2. Fill with AI via Bridge
-  btnFillAi.addEventListener("click", async () => {
-    if (!activeTab?.id) return;
-    if (!jobData || !jobData.questions || jobData.questions.length === 0) {
-      try {
-        const recheckResults = await broadcastToAllFrames(activeTab, { action: "GET_JOB_AND_QUESTIONS" });
-        if (recheckResults && recheckResults.length > 0) {
-          jobData = {
-            platform: recheckResults.find((r) => r.platform)?.platform,
-            company: recheckResults.find((r) => r.company)?.company,
-            jobTitle: recheckResults.find((r) => r.jobTitle)?.jobTitle,
-            jobDescription: recheckResults.find((r) => r.jobDescription)?.jobDescription || "",
-            language: (recheckResults.find((r) => r.questions?.length) || recheckResults[0]).language,
-            questions: recheckResults.flatMap((r) => r.questions || [])
-          };
-        }
-      } catch (e) {}
-    }
-
-    if (!jobData || !jobData.questions || jobData.questions.length === 0) {
-      showMessage(t("noCustomQuestions"), "info");
-      return;
-    }
-
-    if (!isBridgeConnected) {
-      showMessage(t("bridgeNotRunning"), "error");
-      return;
-    }
-
-    showMessage(t("generating"), "info");
-
-    try {
-      const response = await fetch("http://127.0.0.1:8765/api/generate-answers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jobTitle: jobData.jobTitle,
-          company: jobData.company,
-          jobDescription: jobData.jobDescription,
-          profileKey: activeProfileKey,
-          candidateData,
-          language: jobData.language,
-          questions: jobData.questions
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
-      }
-
-      const result = await response.json();
-      if (result.answers) {
-        const injectResults = await broadcastToAllFrames(activeTab, {
-          action: "INJECT_AI_ANSWERS",
-          answers: result.answers
-        });
-        const totalAi = injectResults.reduce((acc, r) => acc + (r.aiFilledCount || 0), 0);
-        const list = (qs) => (qs || []).map((q) => `• ${q.label}`).join("\n");
-        showFillReport([
-          result.humanRequiredQuestions?.length && t("needYourAnswer", list(result.humanRequiredQuestions)),
-          result.unansweredQuestions?.length && t("unanswered", list(result.unansweredQuestions))
-        ]);
-        if (totalAi > 0) {
-          showMessage(t("aiFilledN", totalAi), "success");
-        } else {
-          showMessage(t("answersNoFields"), "error");
-        }
-      } else {
-        showMessage(t("serverNoAnswers"), "error");
-      }
-    } catch (err) {
-      showMessage(t("bridgeGenError", err.message), "error");
     }
   });
 

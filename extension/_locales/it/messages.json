@@ -85,7 +85,7 @@
   "bridgeNotRunning": { "message": "⚠️ Il Local Bridge non è avviato. Avvialo o copia il prompt per la CLI." },
   "generating": { "message": "🤖 Generazione delle risposte tramite l'agente locale..." },
   "needYourAnswer": { "message": "Richiedono una tua risposta:\n$1" },
-  "unanswered": { "message": "Senza risposta (nessun ANTHROPIC_API_KEY o nessun dato nel CV):\n$1" },
+  "unanswered": { "message": "Senza risposta:\n$1" },
   "aiFilledN": { "message": "✅ L'IA ha compilato $1 campi! Controlla prima di inviare." },
   "answersNoFields": { "message": "Risposte generate, ma nessun campo corrispondente trovato." },
   "serverNoAnswers": { "message": "Il server non ha restituito risposte." },

@@ -89,7 +89,7 @@
   "bridgeNotRunning": { "message": "⚠️ Local Bridge не запущено! Запустіть міст або скопіюйте промпт для CLI." },
   "generating": { "message": "🤖 Генерація відповідей через локального агента..." },
   "needYourAnswer": { "message": "Потребують вашої відповіді:\n$1" },
-  "unanswered": { "message": "Без відповіді (немає ANTHROPIC_API_KEY або фактів у резюме):\n$1" },
+  "unanswered": { "message": "Без відповіді:\n$1" },
   "aiFilledN": { "message": "✅ ШІ заповнив $1 полів! Перевірте перед відправкою." },
   "answersNoFields": { "message": "Відповіді згенеровано, але відповідних полів форми не знайдено." },
   "serverNoAnswers": { "message": "Сервер не повернув відповідей." },

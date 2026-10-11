@@ -27,9 +27,8 @@ cadence/embeddedness claims ("daily", "core part of how I build") або
 - "What about Toggl and this role made you apply? And why now?" (Toggl)
 - "Beyond any AI-polished answer, is there something about you..." (Toggl)
 
-**Вимога:** якщо `ANTHROPIC_API_KEY`/`OLLAMA_HOST` заданий, `generateAnswers`
-(`server/ai-generator.js`) все одно НЕ повинен автозаповнювати поле,
-класифіковане як особисте/behavioral/motivational — тільки повертати його
+**Вимога:** будь-який ШІ-агент (через MCP) не повинен автозаповнювати поле,
+класифіковане (детектор: `server/human-questions.js`) як особисте/behavioral/motivational — тільки повертати його
 як "потребує людини", разом із текстом питання. Canned heuristic fallback
 (рядки 50-117) для таких полів — гірше за пусте поле, бо виглядає як
 реальна відповідь кандидата.
