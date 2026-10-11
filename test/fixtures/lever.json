@@ -1,0 +1,35 @@
+{
+  "id": "lever-job-456",
+  "text": "Fullstack Platform Engineer",
+  "hostedUrl": "https://jobs.lever.co/acme/lever-job-456",
+  "applyUrl": "https://jobs.lever.co/acme/lever-job-456/apply",
+  "categories": {
+    "location": "Remote - US / Canada",
+    "team": "Core Platform",
+    "commitment": "Full-time"
+  },
+  "workplaceType": "remote",
+  "country": "United States",
+  "descriptionPlain": "We are seeking a Fullstack Platform Engineer to join our growing team.",
+  "lists": [
+    {
+      "text": "What you will do",
+      "content": "<ul><li>Design and maintain API infrastructure</li><li>Implement reactive frontend dashboards</li></ul>"
+    },
+    {
+      "text": "Requirements",
+      "content": "<ul><li>4+ years experience with Node.js &amp; React</li><li>Familiarity with containerized microservices</li><li>Solid understanding of web security principles</li></ul>"
+    },
+    {
+      "text": "Perks & Benefits",
+      "content": "<ul><li>Competitive salary and equity grant</li><li>Flexible remote work policy</li></ul>"
+    }
+  ],
+  "salaryRange": {
+    "min": 150000,
+    "max": 185000,
+    "currency": "USD",
+    "interval": "per-year-salary"
+  },
+  "additionalPlain": "Acme is an equal opportunity employer."
+}

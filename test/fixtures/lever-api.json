@@ -1,0 +1,29 @@
+{
+  "data": {
+    "id": "lever-123",
+    "title": "Product Manager",
+    "department": {
+      "name": "Product"
+    },
+    "descriptionPlain": "Join our Product team and shape the future of our platform.\n\nYou have:\n- 5+ years of product management\n- Experience with mobile apps\n- Track record of shipping products",
+    "lists": [
+      {
+        "content": "Manage cross-functional projects"
+      },
+      {
+        "content": "Drive product strategy"
+      }
+    ],
+    "additionalPlain": "Remote-friendly team in 10+ countries. Competitive compensation.",
+    "locations": [
+      {
+        "name": "Austin, TX"
+      }
+    ],
+    "workplaceType": "remote",
+    "salary": {
+      "currency": "USD",
+      "range": "120k-140k"
+    }
+  }
+}

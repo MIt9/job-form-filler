@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Form Filler</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<!-- Text comes from _locales/<lang>/messages.json via data-i18n (textContent), data-i18n-html
+     (our own trusted markup), data-i18n-title. The English text here is only a fallback. -->
+<body>
+  <div class="jff-app">
+    <!-- Header -->
+    <header class="jff-header">
+      <div class="jff-brand">
+        <span class="jff-logo-icon">⚡</span>
+        <div>
+          <h1 class="jff-title">Job Form Filler</h1>
+          <span class="jff-subtitle" data-i18n="subtitle">Profile autofill + AI</span>
+        </div>
+      </div>
+      <div class="jff-status-badge" id="bridge-status">
+        <span class="jff-status-dot"></span>
+        <span id="bridge-status-text" data-i18n="bridgeOffline">Bridge offline</span>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="jff-nav">
+      <button class="jff-tab-btn active" data-tab="tab-fill" data-i18n="tabFill">⚡ Fill</button>
+      <button class="jff-tab-btn" data-tab="tab-profile" data-i18n="tabProfile">👤 Profile</button>
+      <button class="jff-tab-btn" data-tab="tab-settings" data-i18n="tabServer">⚙️ Server</button>
+    </nav>
+
+    <!-- Tab 1: Form Fill -->
+    <main class="jff-tab-content active" id="tab-fill">
+      <!-- Active Job Info Card -->
+      <section class="jff-card jff-job-card">
+        <div class="jff-card-header">
+          <span class="jff-platform-tag" id="detected-platform" data-i18n="searchingForm">Looking for a form...</span>
+          <span class="jff-field-count" id="detected-fields-summary" data-i18n="fieldsZero">0 fields</span>
+        </div>
+        <div class="jff-job-details">
+          <div class="jff-company-name" id="detected-company">—</div>
+          <div class="jff-job-title" id="detected-role" data-i18n="openJobPage">Open a job application page</div>
+        </div>
+      </section>
+
+      <div id="profile-empty-hint" class="jff-message error hidden" data-i18n="profileEmptyHint">
+        Your profile is empty. Fill in the 👤 Profile tab so autofill can work.
+      </div>
+
+      <!-- Role variant selector: hidden unless the profile (or bridge repo) defines variants -->
+      <section class="jff-section hidden" id="profile-select-section">
+        <label for="profile-select" class="jff-label" data-i18n="roleVariant">Role / resume variant:</label>
+        <select id="profile-select" class="jff-select"></select>
+      </section>
+
+      <!-- Main Action Buttons -->
+      <section class="jff-actions">
+        <button id="btn-autofill-static" class="jff-btn jff-btn-primary">
+          <span class="jff-btn-icon">⚡</span>
+          <div>
+            <strong data-i18n="btnAutofillTitle">Fill standard fields</strong>
+            <small data-i18n="btnAutofillSub">0 tokens • contacts, links, permits</small>
+          </div>
+        </button>
+
+        <button id="btn-fill-ai" class="jff-btn jff-btn-secondary">
+          <span class="jff-btn-icon">🤖</span>
+          <div>
+            <strong data-i18n="btnAiTitle">Generate with AI / Bridge</strong>
+            <small data-i18n="btnAiSub">Minimal context for custom questions</small>
+          </div>
+        </button>
+
+        <div class="jff-btn-row">
+          <button id="btn-copy-prompt" class="jff-btn jff-btn-outline" data-i18n="btnCopyPrompt" data-i18n-title="btnCopyPromptTip">
+            📋 Copy prompt for CLI
+          </button>
+          <button id="btn-save-repo" class="jff-btn jff-btn-outline" data-i18n="btnSaveRepo" data-i18n-title="btnSaveRepoTip">
+            💾 Save to repo
+          </button>
+        </div>
+
+        <button id="btn-learn-answers" class="jff-btn jff-btn-accent" data-i18n-title="btnLearnTip">
+          <span class="jff-btn-icon">🧠</span>
+          <div>
+            <strong data-i18n="btnLearnTitle">Remember from this form</strong>
+            <small data-i18n="btnLearnSub">Standard fields → profile, other questions → answers</small>
+          </div>
+        </button>
+      </section>
+
+      <!-- Token Saver Feedback -->
+      <section class="jff-savings-bar">
+        <span data-i18n="tokenSavings">💡 Token savings: </span>
+        <strong id="token-savings-est" data-i18n="tokenSavingsValue">~95% (no DOM dumps)</strong>
+      </section>
+
+      <!-- Result Feedback Message -->
+      <div id="action-message" class="jff-message hidden"></div>
+      <div id="fill-report" class="jff-hint hidden"></div>
+    </main>
+
+    <!-- Tab 2: Profile editor (single source of truth, stored in chrome.storage.local) -->
+    <section class="jff-tab-content" id="tab-profile">
+      <div class="jff-profile-preview">
+        <h3 class="jff-section-title" data-i18n="profileTitle">My profile</h3>
+        <p class="jff-hint" data-i18n="profileHint">Stored only locally in your browser. Filled into forms with zero tokens.</p>
+
+        <!-- Rendered from PROFILE_FIELDS (shared/default-profile.js) -->
+        <div id="profile-form" class="jff-form-grid"></div>
+
+        <h3 class="jff-section-title" data-i18n="translationsTitle">Translations for forms in other languages</h3>
+        <p class="jff-hint" data-i18n="translationsHint">Used when a form is in that language. Country names are translated automatically.</p>
+        <div class="jff-form-grid">
+          <label class="jff-label-sm" for="translation-lang" data-i18n="translationsLang">Form language:</label>
+          <select id="translation-lang" class="jff-input-sm"></select>
+        </div>
+        <div id="translation-form" class="jff-form-grid"></div>
+
+        <h3 class="jff-section-title" data-i18n="resumeTitle">Resume (file)</h3>
+        <div class="jff-form-grid">
+          <label class="jff-label-sm" for="resume-input" data-i18n="resumeFile">File:</label>
+          <input type="file" id="resume-input" class="jff-input-sm" accept=".pdf,.doc,.docx,.txt,.rtf">
+        </div>
+        <p class="jff-hint" id="resume-status" data-i18n="resumeNone">Not uploaded</p>
+
+        <div class="jff-btn-row">
+          <button id="btn-save-profile" class="jff-btn jff-btn-primary" data-i18n="btnSaveProfile">💾 Save</button>
+          <button id="btn-export-profile" class="jff-btn jff-btn-outline" data-i18n="btnExport" data-i18n-title="btnExportTip">⬇️ Export</button>
+          <button id="btn-import-profile" class="jff-btn jff-btn-outline" data-i18n="btnImport" data-i18n-title="btnImportTip">⬆️ Import</button>
+          <input type="file" id="import-input" accept=".json,application/json" class="hidden">
+        </div>
+
+        <div class="jff-learned-section">
+          <div class="jff-section-header-row">
+            <h3 class="jff-section-title"><span data-i18n="learnedTitle">🧠 Saved answers</span> (<span id="learned-count">0</span>)</h3>
+            <button id="btn-clear-learned" class="jff-btn-text" data-i18n="btnClear" data-i18n-title="btnClearTip">Clear</button>
+          </div>
+          <p class="jff-hint" data-i18n="learnedHint">Questions you have already answered. Filled automatically with 0 tokens.</p>
+          <div id="learned-answers-list" class="jff-learned-list"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Tab 3: Settings & Bridge -->
+    <section class="jff-tab-content" id="tab-settings">
+      <div class="jff-settings-view">
+        <h3 class="jff-section-title" data-i18n="serverTitle">Local Bridge connection</h3>
+        <p class="jff-hint" data-i18n="serverHint">Connects the extension to Claude Code, AGY and the MCP server.</p>
+        <p class="jff-hint" data-i18n-html="serverRepoHint">Optional: <code>RESUME_REPO_PATH=/path/to/repo npm run bridge</code> loads role variants and PDF resumes from a repository.</p>
+
+        <div class="jff-actions">
+          <button id="btn-reconnect-bridge" class="jff-btn jff-btn-secondary" data-i18n="btnReconnect">
+            🔄 Check connection
+          </button>
+        </div>
+
+        <div class="jff-card jff-instructions">
+          <h4 data-i18n="howToTitle">How to connect Claude Code / AGY:</h4>
+          <ol>
+            <li data-i18n-html="howTo1">Start the bridge: <code>npm run bridge</code> in the project folder (port 8765)</li>
+            <li data-i18n-html="howTo2">Or connect the MCP server: <code>bin/mcp.js</code></li>
+            <li data-i18n-html="howTo3">The assistant can then call <code>get_active_job_form</code> and <code>fill_job_form</code> itself.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer Safety Notice -->
+    <footer class="jff-footer">
+      <span data-i18n="footer">🔒 The final submit button is never clicked automatically.</span>
+    </footer>
+  </div>
+
+  <script src="../shared/default-profile.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

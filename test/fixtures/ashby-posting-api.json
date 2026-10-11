@@ -1,0 +1,22 @@
+{
+  "organizationName": "TechCorp",
+  "jobs": [
+    {
+      "id": "abc123",
+      "title": "Senior Software Engineer",
+      "location": "San Francisco, CA",
+      "isRemote": true,
+      "workplaceType": "REMOTE",
+      "secondaryLocations": [],
+      "descriptionPlain": "Join our engineering team.\n\nQualifications:\n- 5+ years experience\n- Experience with React\n- BS in Computer Science\n\nAbout the role:\nYou will build scalable systems that serve millions of users. This role reports to the VP Engineering.\n\nWe offer competitive compensation, stock options, and full benefits.",
+      "compensation": {
+        "compensationTierSummary": "$200k - $250k"
+      },
+      "hiringTeam": [
+        {
+          "name": "Alice Johnson"
+        }
+      ]
+    }
+  ]
+}

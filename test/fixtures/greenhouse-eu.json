@@ -1,0 +1,10 @@
+{
+  "id": 67890,
+  "title": "Frontend Engineer (EU)",
+  "company_name": "Acme Europe",
+  "location": {
+    "name": "Berlin, Germany (Remote)"
+  },
+  "content": "&lt;p&gt;European engineering hub.&lt;/p&gt;&lt;h3&gt;Qualifications&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;Strong proficiency in modern JavaScript &amp;amp; TypeScript&lt;/li&gt;&lt;li&gt;Experience with web performance optimization&lt;/li&gt;&lt;/ul&gt;&lt;h3&gt;Benefits&lt;/h3&gt;&lt;p&gt;30 days paid vacation.&lt;/p&gt;",
+  "questions": []
+}

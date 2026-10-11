@@ -1,0 +1,20 @@
+{
+  "id": 987654,
+  "shortcode": "WORK999",
+  "title": "Lead DevOps & Infrastructure Engineer",
+  "remote": true,
+  "location": {
+    "city": "London",
+    "region": "Greater London",
+    "country": "United Kingdom"
+  },
+  "salary": {
+    "min": 100000,
+    "max": 130000,
+    "currency": "GBP"
+  },
+  "description": "<p>Join Workable Partner Corp to shape cloud infrastructure and automated CI/CD workflows.</p>",
+  "requirements": "<p><strong>What we are looking for:</strong></p><ul><li>6+ years in DevOps / Platform engineering</li><li>Deep knowledge of Kubernetes, Terraform &amp; AWS</li><li>Strong background in automation &amp; monitoring</li></ul>",
+  "benefits": "<p>Competitive compensation, private medical care &amp; home office allowance.</p>",
+  "questions": []
+}

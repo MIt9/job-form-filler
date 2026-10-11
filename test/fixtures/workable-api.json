@@ -1,0 +1,13 @@
+{
+  "id": "workable-456",
+  "title": "DevOps Engineer",
+  "company": {
+    "name": "CloudTech"
+  },
+  "location": {
+    "name": "Dublin, Ireland"
+  },
+  "remote_position": true,
+  "description": "<p>We need a DevOps engineer to manage our infrastructure.</p><h2>Requirements</h2><ul><li>Kubernetes experience</li><li>AWS expertise</li><li>CI/CD pipeline experience</li></ul>",
+  "salary": "€80k-100k"
+}

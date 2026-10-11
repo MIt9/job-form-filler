@@ -1,0 +1,18 @@
+{
+  "apiVersion": "1",
+  "name": "Acme Corp",
+  "jobs": [
+    {
+      "id": "ashby-job-123",
+      "title": "Senior Software Engineer",
+      "location": "San Francisco, CA",
+      "isRemote": true,
+      "workplaceType": "Remote",
+      "jobUrl": "https://jobs.ashbyhq.com/acme/ashby-job-123",
+      "applyUrl": "https://jobs.ashbyhq.com/acme/ashby-job-123/application",
+      "compensationTierSummary": "$180,000 - $220,000 USD",
+      "descriptionHtml": "<p>Welcome to Acme! We are building software that changes the world &amp; delivers value to users.</p><h3>Requirements</h3><ul><li>5+ years of production experience with Node.js &amp; TypeScript</li><li>Experience with high-throughput distributed systems</li><li>Strong SQL and database indexing knowledge</li></ul><h3>Benefits</h3><ul><li>100% covered health, dental &amp; vision</li><li>401(k) matching</li></ul>",
+      "questions": []
+    }
+  ]
+}

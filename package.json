@@ -1,0 +1,44 @@
+{
+  "name": "job-form-filler",
+  "version": "1.0.0",
+  "description": "Chrome Extension and Bridge/MCP Server for 0-token and AI-assisted job application form filling",
+  "main": "server/bridge-server.js",
+  "bin": {
+    "job-form-filler": "./bin/mcp.js",
+    "job-form-bridge": "./bin/bridge.js",
+    "job-form-mcp": "./bin/mcp.js"
+  },
+  "files": [
+    "bin",
+    "server",
+    "extension/shared"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node bin/bridge.js",
+    "bridge": "node bin/bridge.js",
+    "mcp": "node bin/mcp.js",
+    "release:mcp": "sh scripts/release-mcp.sh",
+    "release:extension": "sh scripts/release-extension.sh",
+    "test": "node test/test-profiles.js && node test/test-bridge-command.js && node test/test-field-classification.js && node test/test-profile-merge.js && node test/test-replace-field-value.js && node test/test-job-posting.js && node test/log-application.test.js && node test/test-log-application-real-layout.js && node test/test-form-helpers.js && node test/test-form-integration.js && node test/test-job-posting-encoding.js && node test/test-manifest.js && node test/test-click-and-tabs.js && node test/test-bridge-port-reuse.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
+    "@modelcontextprotocol/sdk": "^1.2.0",
+    "ws": "^8.18.0"
+  },
+  "keywords": [
+    "chrome-extension",
+    "mcp",
+    "job-search",
+    "autofill",
+    "ai-agent"
+  ],
+  "author": "Dmytro Bilukha",
+  "license": "MIT",
+  "devDependencies": {
+    "jsdom": "^30.1.2"
+  }
+}

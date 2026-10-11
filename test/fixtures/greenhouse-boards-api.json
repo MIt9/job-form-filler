@@ -1,0 +1,33 @@
+{
+  "id": "xyz789",
+  "title": "Full Stack Engineer",
+  "content": "&lt;p&gt;We&#39;re looking for a Full Stack Engineer&lt;/p&gt;&lt;h2&gt;What we&#39;re looking for&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;3+ years of web development&lt;/li&gt;&lt;li&gt;Experience with Python and TypeScript&lt;/li&gt;&lt;li&gt;Strong communication skills&lt;/li&gt;&lt;/ul&gt;&lt;h2&gt;Benefits&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;Health insurance&lt;/li&gt;&lt;li&gt;Stock options&lt;/li&gt;&lt;/ul&gt;",
+  "location": {
+    "name": "New York, NY"
+  },
+  "remote_position": false,
+  "department": {
+    "name": "Engineering"
+  },
+  "compensation": "&lt;span&gt;$150k - $180k&lt;/span&gt;",
+  "questions": [
+    {
+      "label": "Why do you want to join us?",
+      "required": true,
+      "fields": [
+        {
+          "field_type": "textarea"
+        }
+      ]
+    },
+    {
+      "label": "Years of experience",
+      "required": false,
+      "fields": [
+        {
+          "field_type": "short_text"
+        }
+      ]
+    }
+  ]
+}

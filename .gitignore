@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# Personal data never belongs in this repo
+profile.local.json
+*.profile.json
+learned-answers.json

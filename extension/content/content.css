@@ -1,0 +1,13 @@
+/* Subtle highlight for user visibility without detectable bot classnames */
+
+[data-autofill-highlight="1"] {
+  outline: 2px solid rgba(16, 185, 129, 0.4) !important;
+  outline-offset: -1px !important;
+  transition: outline 0.3s ease;
+}
+
+[data-autofill-highlight="2"] {
+  outline: 2px solid rgba(56, 189, 248, 0.4) !important;
+  outline-offset: -1px !important;
+  transition: outline 0.3s ease;
+}
