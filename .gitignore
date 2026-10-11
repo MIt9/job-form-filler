@@ -9,3 +9,4 @@ profile.local.json
 learned-answers.json
 *.mov
 *.mp4
+!docs/demo.mp4

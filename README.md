@@ -4,6 +4,9 @@ Fill job application forms (Ashby, Greenhouse, Lever, Workable, LinkedIn Easy Ap
 
 🇺🇦 [Документація українською](README.uk.md)
 
+[![Demo: filling an Ashby application](docs/demo.gif)](docs/demo.mp4)
+<sub>Click the preview to watch the 25-second demo with voiceover.</sub>
+
 **Why it exists:** handing a raw DOM or screenshots to an AI for every form burns tokens. Job Form Filler splits fields into tiers:
 
 1. **Tier 1, 0 tokens:** name, contacts, links, work authorization, notice period, EEO, resume file. Filled locally from your profile.
