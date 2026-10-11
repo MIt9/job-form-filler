@@ -4,9 +4,9 @@
   "description": "Chrome Extension and Bridge/MCP Server for 0-token and AI-assisted job application form filling",
   "main": "server/bridge-server.js",
   "bin": {
-    "job-form-filler": "./bin/mcp.js",
-    "job-form-bridge": "./bin/bridge.js",
-    "job-form-mcp": "./bin/mcp.js"
+    "job-form-filler": "bin/mcp.js",
+    "job-form-bridge": "bin/bridge.js",
+    "job-form-mcp": "bin/mcp.js"
   },
   "files": [
     "bin",
@@ -40,5 +40,13 @@
   "license": "MIT",
   "devDependencies": {
     "jsdom": "^30.1.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MIt9/job-form-filler.git"
+  },
+  "homepage": "https://github.com/MIt9/job-form-filler#readme",
+  "bugs": {
+    "url": "https://github.com/MIt9/job-form-filler/issues"
   }
 }

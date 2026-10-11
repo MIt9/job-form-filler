@@ -297,7 +297,7 @@ async function callTool(name, args = {}) {
 
 async function runMcpServer() {
   const server = new Server(
-    { name: "job-form-filler-mcp", version: "1.1.0" },
+    { name: "job-form-filler-mcp", version: require("../package.json").version },
     { capabilities: { tools: {} }, instructions: INSTRUCTIONS }
   );
 
