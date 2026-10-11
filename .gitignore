@@ -7,3 +7,5 @@ dist/
 profile.local.json
 *.profile.json
 learned-answers.json
+*.mov
+*.mp4
