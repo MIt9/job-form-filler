@@ -1,6 +1,6 @@
 # Demo video script (~60 s)
 
-Use a throwaway test profile (fake name, `jane@example.com`), never real data.
+Use the fake profile in `docs/demo-profile.json` (popup → Profile tab → ⬆️ Import), never real data. For recording, use a separate Chrome profile with only this extension loaded, so no real data or other extensions show up.
 
 | Time | Screen | Voiceover / caption |
 |---|---|---|
