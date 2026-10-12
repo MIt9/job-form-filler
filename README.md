@@ -19,7 +19,7 @@ The final **Submit button is never clicked automatically.** You review and send.
 
 ### Option A: extension only (most people)
 
-1. Install **Job Form Filler** from the Chrome Web Store *(link coming once the listing is approved)*. Until then: `chrome://extensions` → Developer mode → Load unpacked → pick the `extension/` folder.
+1. Install **Job Form Filler** from the [Chrome Web Store](https://chromewebstore.google.com/detail/job-form-filler/mldoeaodmjbjmkpnchkhaahpaphoffei). Or from source: `chrome://extensions` → Developer mode → Load unpacked → pick the `extension/` folder.
 2. Open the popup → **Profile** tab → fill in your data and upload your resume (PDF/DOCX, up to 5 MB).
 3. Open an application form → **Fill standard fields**.
 
@@ -52,7 +52,8 @@ Requires Node.js 18+. The popup's **Settings** tab shows whether the bridge is c
 | `RESUME_REPO_PATH` | Folder with role-specific resumes (`<repo>/resume/<role>/*.md, *.pdf` or `<repo>/<role>/...`). Enables role variants, PDF upload and saving applications. Off by default. |
 | `BRIDGE_PORT` | Bridge port, default `8765`. |
 | `JFF_DATA_DIR` | Where saved answers live, default `~/.job-form-filler`. |
-| `JFF_EXTENSION_IDS` | Comma-separated extension IDs the bridge accepts. Set it to your extension ID. |
+| `JFF_EXTENSION_IDS` | Extra extension IDs the bridge accepts (comma-separated). The Chrome Web Store build is always allowed; add the ID of a "Load unpacked" build here. |
+| `JFF_ALLOW_ANY_EXTENSION` | Set to `1` to accept any extension. Local development only. |
 
 Env vars go into the `env` block of your MCP config, e.g. `"env": { "RESUME_REPO_PATH": "/path/to/resumes" }`.
 

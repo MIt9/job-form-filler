@@ -40,11 +40,14 @@ function sendToExtension(command, payload = {}, timeoutMs = 15000) {
 // The bridge serves personal data and drives the browser, so only the extension and local
 // processes (MCP server, curl: no Origin header) may call it — never a web page. The Host check
 // blocks DNS-rebinding (a web page reaching 127.0.0.1 through its own domain name).
-// JFF_EXTENSION_IDS (comma-separated: store ID + dev ID) pins the allowed extensions; without it any
-// installed extension could read the profile, so it is only tolerated for local dev (warned once).
-const ALLOWED_EXTENSION_IDS = (process.env.JFF_EXTENSION_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
-if (!ALLOWED_EXTENSION_IDS.length) {
-  console.error("[bridge] WARNING: JFF_EXTENSION_IDS not set — accepting any chrome-extension:// origin. Set it to your extension ID(s).");
+// The Chrome Web Store build is always trusted. A "Load unpacked" build has a different ID: add it via
+// JFF_EXTENSION_IDS (comma-separated), or set JFF_ALLOW_ANY_EXTENSION=1 for local dev only (any installed
+// extension could then read the profile, so it is warned once).
+const STORE_EXTENSION_ID = "mldoeaodmjbjmkpnchkhaahpaphoffei";
+const ALLOWED_EXTENSION_IDS = [STORE_EXTENSION_ID, ...(process.env.JFF_EXTENSION_IDS || "").split(",").map((s) => s.trim()).filter(Boolean)];
+const ALLOW_ANY_EXTENSION = process.env.JFF_ALLOW_ANY_EXTENSION === "1";
+if (ALLOW_ANY_EXTENSION) {
+  console.error("[bridge] WARNING: JFF_ALLOW_ANY_EXTENSION=1 — accepting any chrome-extension:// origin. Dev only.");
 }
 
 function isTrustedRequest(req) {
@@ -52,7 +55,7 @@ function isTrustedRequest(req) {
   const host = (req.headers.host || "").replace(/:\d+$/, "");
   if (!["127.0.0.1", "localhost"].includes(host)) return false;
   if (!origin) return true;
-  if (!ALLOWED_EXTENSION_IDS.length) return origin.startsWith("chrome-extension://");
+  if (ALLOW_ANY_EXTENSION) return origin.startsWith("chrome-extension://");
   return ALLOWED_EXTENSION_IDS.some((id) => origin === `chrome-extension://${id}`);
 }
 

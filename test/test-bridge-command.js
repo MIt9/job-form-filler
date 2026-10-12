@@ -2,6 +2,7 @@ const assert = require("assert");
 
 // Use a dedicated port so this never collides with a real running bridge-server.
 process.env.BRIDGE_PORT = "8766";
+process.env.JFF_EXTENSION_IDS = "devid";
 const { startBridgeServer } = require("../server/bridge-server");
 
 console.log("▶ Testing POST /api/command (generic bridge proxy used by mcp-server.js)...");
@@ -30,9 +31,12 @@ console.log("▶ Testing POST /api/command (generic bridge proxy used by mcp-ser
     // A web page must never reach the bridge (it serves personal data and drives the browser).
     const evil = await fetch("http://127.0.0.1:8766/api/status", { headers: { Origin: "https://evil.example" } });
     assert.strictEqual(evil.status, 403, "Web-page origins must be rejected");
-    const ext = await fetch("http://127.0.0.1:8766/api/status", { headers: { Origin: "chrome-extension://abc" } });
-    assert.strictEqual(ext.status, 200, "Extension origin must be allowed");
-    assert.strictEqual(ext.headers.get("access-control-allow-origin"), "chrome-extension://abc");
+    const status = (origin) => fetch("http://127.0.0.1:8766/api/status", { headers: { Origin: origin } });
+    const store = await status("chrome-extension://mldoeaodmjbjmkpnchkhaahpaphoffei");
+    assert.strictEqual(store.status, 200, "Web Store extension must be allowed");
+    assert.strictEqual(store.headers.get("access-control-allow-origin"), "chrome-extension://mldoeaodmjbjmkpnchkhaahpaphoffei");
+    assert.strictEqual((await status("chrome-extension://devid")).status, 200, "JFF_EXTENSION_IDS adds an unpacked dev ID");
+    assert.strictEqual((await status("chrome-extension://someotherextension")).status, 403, "Other extensions must be rejected");
     console.log("✔ Origin restriction tests passed!");
 
     // Test open_job_url and focus_tab tool calls and bridge routing
