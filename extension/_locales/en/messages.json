@@ -2,7 +2,7 @@
   "appName": { "message": "Job Form Filler" },
   "appDesc": { "message": "Fills job application forms in any language from your local profile. Optional AI for custom questions via MCP." },
 
-  "subtitle": { "message": "Profile autofill + AI" },
+  "subtitle": { "message": "Profile autofill" },
   "bridgeOnline": { "message": "Bridge online" },
   "bridgeOffline": { "message": "Bridge offline" },
   "tabFill": { "message": "⚡ Fill" },

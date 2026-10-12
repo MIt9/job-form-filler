@@ -85,7 +85,8 @@ function startBridgeServer() {
       res.end(
         JSON.stringify({
           status: "ok",
-          version: "1.0.0",
+          version: require("../package.json").version,
+          resumeRepoPath: DEFAULT_RESUME_REPO_PATH,
           extensionConnected: !!(activeWsClient && activeWsClient.readyState === 1),
           timestamp: new Date().toISOString()
         })

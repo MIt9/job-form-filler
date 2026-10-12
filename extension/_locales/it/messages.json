@@ -1,7 +1,7 @@
 {
   "appName": { "message": "Job Form Filler" },
   "appDesc": { "message": "Compila le candidature in qualsiasi lingua dal tuo profilo locale. IA opzionale via MCP per le domande aperte." },
-  "subtitle": { "message": "Compilazione dal profilo + IA" },
+  "subtitle": { "message": "Compilazione dal profilo" },
   "bridgeOnline": { "message": "Bridge online" },
   "bridgeOffline": { "message": "Bridge offline" },
   "tabFill": { "message": "⚡ Compila" },

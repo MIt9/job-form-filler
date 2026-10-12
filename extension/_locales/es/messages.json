@@ -1,7 +1,7 @@
 {
   "appName": { "message": "Job Form Filler" },
   "appDesc": { "message": "Rellena solicitudes de empleo en cualquier idioma desde tu perfil local. IA opcional vía MCP para preguntas abiertas." },
-  "subtitle": { "message": "Autocompletado desde el perfil + IA" },
+  "subtitle": { "message": "Autocompletado desde el perfil" },
   "bridgeOnline": { "message": "Bridge en línea" },
   "bridgeOffline": { "message": "Bridge sin conexión" },
   "tabFill": { "message": "⚡ Rellenar" },

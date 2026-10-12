@@ -1,7 +1,7 @@
 {
   "appName": { "message": "Job Form Filler" },
   "appDesc": { "message": "Vult sollicitatieformulieren in elke taal in vanuit je lokale profiel. Optioneel AI via MCP voor open vragen." },
-  "subtitle": { "message": "Invullen vanuit profiel + AI" },
+  "subtitle": { "message": "Invullen vanuit profiel" },
   "bridgeOnline": { "message": "Bridge online" },
   "bridgeOffline": { "message": "Bridge offline" },
   "tabFill": { "message": "⚡ Invullen" },

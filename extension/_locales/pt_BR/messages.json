@@ -1,7 +1,7 @@
 {
   "appName": { "message": "Job Form Filler" },
   "appDesc": { "message": "Preenche candidaturas de emprego em qualquer idioma a partir dseu perfil local. IA opcional via MCP para perguntas abertas." },
-  "subtitle": { "message": "Preenchimento pelo perfil + IA" },
+  "subtitle": { "message": "Preenchimento pelo perfil" },
   "bridgeOnline": { "message": "Bridge online" },
   "bridgeOffline": { "message": "Bridge offline" },
   "tabFill": { "message": "⚡ Preencher" },

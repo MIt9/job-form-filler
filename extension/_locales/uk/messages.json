@@ -2,7 +2,7 @@
   "appName": { "message": "Job Form Filler" },
   "appDesc": { "message": "Заповнює форми вакансій будь-якою мовою з вашого локального профілю. Опційно ШІ для нестандартних питань через MCP." },
 
-  "subtitle": { "message": "Автозаповнення з профілю + ШІ" },
+  "subtitle": { "message": "Автозаповнення з профілю" },
   "bridgeOnline": { "message": "Міст онлайн" },
   "bridgeOffline": { "message": "Міст офлайн" },
   "tabFill": { "message": "⚡ Заповнення" },

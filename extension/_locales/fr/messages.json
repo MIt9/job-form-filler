@@ -1,7 +1,7 @@
 {
   "appName": { "message": "Job Form Filler" },
   "appDesc": { "message": "Remplit les candidatures dans toutes les langues depuis votre profil local. IA optionnelle via MCP pour les questions libres." },
-  "subtitle": { "message": "Remplissage depuis le profil + IA" },
+  "subtitle": { "message": "Remplissage depuis le profil" },
   "bridgeOnline": { "message": "Bridge en ligne" },
   "bridgeOffline": { "message": "Bridge hors ligne" },
   "tabFill": { "message": "⚡ Remplir" },

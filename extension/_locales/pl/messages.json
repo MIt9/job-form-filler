@@ -1,7 +1,7 @@
 {
   "appName": { "message": "Job Form Filler" },
   "appDesc": { "message": "Wypełnia formularze rekrutacyjne w dowolnym języku z Twojego lokalnego profilu. Opcjonalnie AI przez MCP do pytań otwartych." },
-  "subtitle": { "message": "Autouzupełnianie z profilu + AI" },
+  "subtitle": { "message": "Autouzupełnianie z profilu" },
   "bridgeOnline": { "message": "Bridge online" },
   "bridgeOffline": { "message": "Bridge offline" },
   "tabFill": { "message": "⚡ Wypełnij" },

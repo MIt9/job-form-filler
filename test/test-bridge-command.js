@@ -35,6 +35,9 @@ console.log("▶ Testing POST /api/command (generic bridge proxy used by mcp-ser
     const store = await status("chrome-extension://mldoeaodmjbjmkpnchkhaahpaphoffei");
     assert.strictEqual(store.status, 200, "Web Store extension must be allowed");
     assert.strictEqual(store.headers.get("access-control-allow-origin"), "chrome-extension://mldoeaodmjbjmkpnchkhaahpaphoffei");
+    const info = await store.json();
+    assert.strictEqual(info.version, require("../package.json").version, "Status reports the real version");
+    assert("resumeRepoPath" in info, "Status exposes the resume folder so the MCP server can detect a mismatched bridge");
     assert.strictEqual((await status("chrome-extension://devid")).status, 200, "JFF_EXTENSION_IDS adds an unpacked dev ID");
     assert.strictEqual((await status("chrome-extension://someotherextension")).status, 403, "Other extensions must be rejected");
     console.log("✔ Origin restriction tests passed!");

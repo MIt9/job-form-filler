@@ -5,7 +5,7 @@ const {
   ListToolsRequestSchema
 } = require("@modelcontextprotocol/sdk/types.js");
 
-const { loadProfiles } = require("./profile-loader.js");
+const { loadProfiles, DEFAULT_RESUME_REPO_PATH } = require("./profile-loader.js");
 const { saveApplication } = require("./app-saver.js");
 const { isHumanRequiredQuestion } = require("./human-questions.js");
 const { getJobPosting } = require("./job-posting.js");
@@ -302,6 +302,24 @@ async function callTool(name, args = {}) {
   throw new Error(`Unknown tool: ${name}`);
 }
 
+// Another process may already own the bridge port (an older run, or another MCP client). We then talk to
+// that bridge, which ignores OUR settings: warn when its resume folder differs from the one configured here.
+let configWarning;
+async function bridgeConfigWarning() {
+  if (configWarning !== undefined) return configWarning;
+  configWarning = null;
+  try {
+    const status = await (await fetch(`${BRIDGE_HTTP_URL}/status`)).json();
+    const mine = DEFAULT_RESUME_REPO_PATH || "";
+    if ((status.resumeRepoPath || "") !== mine) {
+      configWarning =
+        `A bridge started earlier is running with resume folder "${status.resumeRepoPath || "(none)"}", not "${mine || "(none)"}". ` +
+        "Quit the other MCP client or process using port 8765, then restart this extension so its settings apply.";
+    }
+  } catch {}
+  return configWarning;
+}
+
 async function runMcpServer() {
   const server = new Server(
     { name: "job-form-filler-mcp", version: require("../package.json").version },
@@ -314,6 +332,8 @@ async function runMcpServer() {
     const { name, arguments: args } = request.params;
     try {
       const result = await callTool(name, args);
+      const warning = await bridgeConfigWarning();
+      if (warning && result && typeof result === "object" && !Array.isArray(result)) result.warning = warning;
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
       return { isError: true, content: [{ type: "text", text: `${name} failed: ${err.message}` }] };
