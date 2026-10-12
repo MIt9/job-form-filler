@@ -261,8 +261,15 @@ async function callTool(name, args = {}) {
       }
       return getJobPosting(args.url, { summary: !!args.summary });
     }
-    case "autofill_static_fields":
-      return callBridge("AUTOFILL_STATIC", { profileKey: args.profileKey });
+    case "autofill_static_fields": {
+      const result = await callBridge("AUTOFILL_STATIC", { profileKey: args.profileKey });
+      if (result?.failed?.some((f) => f.key === "resumeFile")) {
+        result.hint =
+          "The resume was not attached. Tell the user to upload it once in the extension popup (Profile tab, PDF/DOCX up to 5 MB); " +
+          "autofill then attaches it. Do not search the user's disk for resume files.";
+      }
+      return result;
+    }
     case "get_active_job_form": {
       const form = await callBridge("GET_ACTIVE_FORM", { full: !!args.full });
       (form.questions || []).forEach((q) => {
