@@ -29,12 +29,14 @@ Your profile and resume stay in `chrome.storage.local`. Nothing is sent anywhere
 
 The MCP server lets Claude read the form, answer custom questions from your resume, and fill them in.
 
+**Claude Desktop (one click):** download `job-form-filler-<version>.mcpb` from the [latest MCP release](https://github.com/MIt9/job-form-filler/releases/tag/mcp-v1.1.1) and double-click it. No Node.js install or config editing needed. You can optionally pick a folder with role-specific resumes in the extension settings.
+
 **Claude Code:**
 ```bash
 claude mcp add job-form-filler -- npx -y job-form-filler
 ```
 
-**Claude Desktop / other MCP clients**, add to the MCP config:
+**Other MCP clients**, add to the MCP config:
 ```json
 {
   "mcpServers": {
@@ -43,7 +45,7 @@ claude mcp add job-form-filler -- npx -y job-form-filler
 }
 ```
 
-Requires Node.js 18+. The popup's **Settings** tab shows whether the bridge is connected.
+Requires Node.js 18+ (not for the Claude Desktop bundle). The popup's **Settings** tab shows whether the bridge is connected.
 
 ### Optional environment variables
 
