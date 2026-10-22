@@ -384,6 +384,11 @@ async function handleBridgeMessage(message) {
       const results = await broadcastToAllFrames(activeTab, { action: "GET_JOB_AND_QUESTIONS", full: !!payload?.full });
       if (!results || results.length === 0) {
         sendBridgeResponse(requestId, { success: true, data: { questions: [], totalFieldsCount: 0 } });
+      } else if (results.some((r) => r.formClosed !== undefined || r.notAVacancyPage)) {
+        // Djinni: the content script returns its own shape (formClosed / fields / alreadyApplied / salaryFitHint / notAVacancyPage).
+        // The generic merge below would drop those keys, so pass that frame's result through unchanged.
+        const djinni = results.find((r) => r.formClosed !== undefined || r.notAVacancyPage);
+        sendBridgeResponse(requestId, { success: true, data: { platform: "Djinni", ...djinni, url: activeTab.url } });
       } else {
         const merged = {
           platform: results.find((r) => r.platform && r.platform !== "Generic Job Board")?.platform || results[0].platform,

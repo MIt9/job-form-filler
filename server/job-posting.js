@@ -168,6 +168,11 @@ function isDouHost(parsedUrl) {
   return host === "jobs.dou.ua" || host === "dou.ua" || host.endsWith(".dou.ua");
 }
 
+function isDjinniHost(parsedUrl) {
+  const host = parsedUrl.hostname.toLowerCase();
+  return host === "djinni.co" || host.endsWith(".djinni.co");
+}
+
 function isKnownAtsHost(hostname) {
   if (!hostname || typeof hostname !== "string") return false;
   const host = hostname.toLowerCase();
@@ -203,6 +208,9 @@ function detectAdapter(parsedUrl) {
   }
   if (host.endsWith("workable.com")) {
     return "workable";
+  }
+  if (host === "djinni.co" || host.endsWith(".djinni.co")) {
+    return "djinni";
   }
   return "generic";
 }
@@ -774,6 +782,296 @@ async function fetchWorkablePosting(parsedUrl, fetchImpl) {
   };
 }
 
+/**
+ * Djinni-specific HTML adapter.
+ *
+ * Djinni vacancy URL shape: https://djinni.co/jobs/<id>-<slug>/
+ * A bare /jobs/<id>/ (no slug) returns 404 on the live site.
+ *
+ * The vacancy page is publicly readable without login. Structured
+ * facts (experience, remote, countries, English level, employment,
+ * domain, company type, test task, recruiter activity, views,
+ * applications) live in the <aside> sidebar; the description and
+ * required skills are in the main column.
+ *
+ * Salary-fit hints and the apply form are login-only and are
+ * handled by the content script (item 2), not this server fetch.
+ */
+async function fetchDjinniPosting(parsedUrl, fetchImpl) {
+  // Validate URL shape: must have /jobs/<id>-<slug>/ pattern
+  const path = parsedUrl.pathname;
+  const jobsMatch = path.match(/^\/jobs\/(\d+(?:-[^/]+)?)\/?\s*$/);
+  if (!jobsMatch) {
+    throw new Error(
+      `Invalid Djinni URL "${parsedUrl.href}": path must match /jobs/<id>-<slug>/. ` +
+        "A bare /jobs/<id>/ returns 404 on djinni.co — include the slug."
+    );
+  }
+
+  const jobPathSegment = jobsMatch[1];
+  // Bare numeric ID with no slug → reject early with a clear message
+  if (/^\d+$/.test(jobPathSegment)) {
+    throw new Error(
+      `Djinni requires a slug in the URL (e.g. /jobs/854193-senior-engineer/), ` +
+        `not just /jobs/${jobPathSegment}/. ` +
+        "Use the RSS feed to resolve the slug: GET https://djinni.co/jobs/rss/?primary_keyword=<kw>"
+    );
+  }
+
+  const res = await fetchWithTimeout(parsedUrl.href, fetchImpl, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "uk,en;q=0.8"
+    }
+  });
+
+  if (!res.ok) {
+    throw new Error(`Djinni fetch error: HTTP ${res.status} ${res.statusText}`);
+  }
+
+  const html = await res.text();
+  return parseDjinniHtml(html, parsedUrl.href);
+}
+
+/**
+ * Parse a fetched Djinni vacancy HTML string.
+ * Exposed separately so tests can inject fixture HTML directly.
+ */
+function parseDjinniHtml(html, url) {
+  // --- Title ---------------------------------------------------------------
+  const ogTitleMatch = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i);
+  const titleTagMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  let title = ogTitleMatch
+    ? decodeHtmlEntities(ogTitleMatch[1])
+        .replace(/\s*в\s+.+$/, "")
+        .trim()
+    : titleTagMatch
+    ? decodeHtmlEntities(titleTagMatch[1])
+        .replace(/\s*[–\-]\s*Djinni\s*$/i, "")
+        .replace(/\s*в\s+.+$/, "")
+        .trim()
+    : h1Match
+    ? htmlToPlainText(h1Match[1]).trim()
+    : "";
+
+  // --- Company -------------------------------------------------------------
+  // Pattern: "Title в Company – Djinni" or "Title в Company " in og:title
+  let company = "";
+  const ogFull = ogTitleMatch ? decodeHtmlEntities(ogTitleMatch[1]) : "";
+  const companyMatch = ogFull.match(/\s+в\s+(.+?)\s*$/);
+  if (companyMatch) company = companyMatch[1].trim();
+
+  // Fallback: company link in header
+  if (!company) {
+    const compLinkMatch = html.match(/href="\/jobs\/\?company=\d+[^"]*"[^>]*>\s*<span[^>]*>\s*([^<]+)\s*<\/span>/i);
+    if (compLinkMatch) company = decodeHtmlEntities(compLinkMatch[1]).trim();
+  }
+
+  // --- Description ---------------------------------------------------------
+  const descMatch = html.match(/<div[^>]*class="[^"]*job-post__description[^"]*">([\s\S]*?)<\/div>/i);
+  const descriptionText = descMatch
+    ? htmlToPlainText(descMatch[1])
+    : htmlToPlainText(extractDjinniMainContent(html));
+
+  // --- Required skills -----------------------------------------------------
+  // Djinni uses <h2>Необхідні навички</h2> followed by tag links or plain text
+  let requiredSkills = null;
+  const skillsHeadingIdx = html.indexOf("Необхідні навички");
+  if (skillsHeadingIdx >= 0) {
+    const afterHeading = html.slice(skillsHeadingIdx).replace(/^[\s\S]*?<\/h2>/i, "");
+    const nextH2 = afterHeading.search(/<h2/i);
+    const skillsArea = nextH2 >= 0 ? afterHeading.slice(0, nextH2) : afterHeading.slice(0, 1000);
+    const text = htmlToPlainText(skillsArea).replace(/\s+/g, " ").trim();
+    if (text) requiredSkills = text;
+  }
+
+  // --- Language requirements -----------------------------------------------
+  let languageRequirement = null;
+  const langHeadingIdx = html.indexOf("Вимоги до володіння мовами");
+  if (langHeadingIdx >= 0) {
+    const langArea = html.slice(langHeadingIdx, langHeadingIdx + 1500);
+    const rows = Array.from(
+      langArea.matchAll(/detail-rows__name">([^<]+)<[\s\S]*?detail-rows__value">([^<]+)</g)
+    ).map((m) => decodeHtmlEntities(m[1]).trim() + " " + decodeHtmlEntities(m[2]).trim());
+    if (rows.length) languageRequirement = rows.join("; ");
+  }
+
+  // --- Views / applications live in the main column, not the aside ----------
+  const statsMatch = htmlToPlainText(html).match(/(\d+)\s*переглядів[^\d]{0,10}(\d+)\s*відгуків/i);
+
+  // --- Sidebar facts -------------------------------------------------------
+  const asideMatch = html.match(/<aside[^>]*>([\s\S]*?)<\/aside>/i);
+  const asideHtml = asideMatch ? asideMatch[1] : "";
+  const sidebar = parseDjinniSidebar(asideHtml);
+
+  // --- Requirements text ---------------------------------------------------
+  const requirementsText = requiredSkills
+    ? `Необхідні навички: ${requiredSkills}`
+    : extractRequirements(descriptionText);
+
+  // --- Remote / location ---------------------------------------------------
+  const remote =
+    sidebar.location_type === "remote" ? true : sidebar.location_type === "office" ? false : null;
+
+  return {
+    source: "djinni",
+    url,
+    title,
+    company,
+    location: sidebar.countries || "",
+    remote,
+    compensation: null, // salary-fit hints are login-only; available via content script
+    descriptionText,
+    requirementsText,
+    requiredSkills,
+    languageRequirement,
+    // Structured sidebar facts:
+    location_type: sidebar.location_type || null,
+    countries: sidebar.countries || null,
+    experience_min_years: sidebar.experience_min_years != null ? sidebar.experience_min_years : null,
+    english_level: sidebar.english_level || null,
+    employment: sidebar.employment || null,
+    domain: sidebar.domain || null,
+    company_type: sidebar.company_type || null,
+    has_test_task: sidebar.has_test_task || false,
+    recruiter_activity: sidebar.recruiter_activity || null,
+    views: statsMatch ? parseInt(statsMatch[1], 10) : sidebar.views ?? null,
+    applications: statsMatch ? parseInt(statsMatch[2], 10) : sidebar.applications ?? null,
+    questions: [],
+    fetchedAt: new Date().toISOString()
+  };
+}
+
+/**
+ * Parse the Djinni <aside> HTML into structured facts.
+ * Based on observed Djinni sidebar patterns (2026-10-21/22).
+ */
+function parseDjinniSidebar(asideHtml) {
+  if (!asideHtml) return {};
+  const text = htmlToPlainText(asideHtml);
+  const lines = text
+    .split("\n")
+    .map((l) => l.replace(/^[•\-\s]+/, "").trim())
+    .filter((l) => l.length > 0);
+
+  const result = {};
+  let countriesCandidate = null;
+
+  // "Виключно від 5 років досвіду" / "від 3 до 5 років": match across line breaks.
+  const expMatch = text.match(/(?:від|from)\s+(\d+)\s+(?:рок|рік|рр|год|year)/i);
+  if (expMatch) result.experience_min_years = parseInt(expMatch[1], 10);
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Experience years are parsed before the loop (Djinni splits "Виключно / від / 5 років досвіду" across lines).
+    if (/без досвіду|no experience/i.test(line) && result.experience_min_years == null) {
+      result.experience_min_years = 0;
+      continue;
+    }
+
+    // Location type
+    if (/тільки\s+віддалено|only\s+remote/i.test(line)) {
+      result.location_type = "remote";
+      continue;
+    }
+    if (/тільки\s+в\s+офіс|only\s+office|onsite/i.test(line)) {
+      result.location_type = "office";
+      continue;
+    }
+    if (/гібрид|hybrid/i.test(line)) {
+      result.location_type = "hybrid";
+      continue;
+    }
+
+    // Countries label: the text BEFORE this line is the country/region
+    if (/Країни, де розглядаємо кандидатів/i.test(line)) {
+      if (countriesCandidate) result.countries = countriesCandidate;
+      countriesCandidate = null;
+      continue;
+    }
+
+    // English level: "Англійська B2 – Вище середнього"
+    const englishMatch = line.match(/Англійська\s+([\w\d]+\s*[–\-]\s*.+?)$/i);
+    if (englishMatch) {
+      result.english_level = englishMatch[1].trim();
+      continue;
+    }
+
+    // Employment: "Зайнятість: Fulltime"
+    const employmentMatch = line.match(/Зайнятість:\s*(.+)/i);
+    if (employmentMatch) {
+      result.employment = employmentMatch[1].trim();
+      continue;
+    }
+
+    // Domain: "Домен: HRTech"
+    const domainMatch = line.match(/Домен:\s*(.+)/i);
+    if (domainMatch) {
+      result.domain = domainMatch[1].trim();
+      continue;
+    }
+
+    // Company type
+    if (/продуктова\s+компанія/i.test(line)) { result.company_type = "product"; continue; }
+    if (/стартап/i.test(line)) { result.company_type = "startup"; continue; }
+    if (/аутсорс/i.test(line)) { result.company_type = "outsource"; continue; }
+    if (/аутстаф/i.test(line)) { result.company_type = "outstaffing"; continue; }
+
+    // Test task
+    if (/є тестове завдання|has test task/i.test(line)) {
+      result.has_test_task = true;
+      continue;
+    }
+
+    // Recruiter activity: "Активність рекрутера: Висока"
+    const recruiterMatch = line.match(/Активність рекрутера:\s*(.+)/i);
+    if (recruiterMatch) {
+      result.recruiter_activity = recruiterMatch[1].trim();
+      continue;
+    }
+
+    // Response lag: "Відповідали N тижнів тому"
+    if (/відповідали/i.test(line)) {
+      result.response_lag = line.trim();
+      continue;
+    }
+
+    // Views and applications: "389 переглядів · 217 відгуків"
+    const statsMatch = line.match(/(\d+)\s+переглядів[^·•]*[·•]\s*(\d+)\s+відгуків/i);
+    if (statsMatch) {
+      result.views = parseInt(statsMatch[1], 10);
+      result.applications = parseInt(statsMatch[2], 10);
+      continue;
+    }
+
+    // Track potential countries candidate (the line that precedes the "Країни, де розглядаємо" label)
+    // Skip obvious non-country lines
+    if (
+      !/Тільки|Виключно|Зайнятість|Домен|Стартап|Продуктова|Відповідали|Активність|Англійська|Fulltime|Full-time|Part-time|Гібрид|офіс|Відгукнутися|переглядів/i.test(
+        line
+      ) &&
+      line.length < 80
+    ) {
+      countriesCandidate = line.trim();
+    }
+  }
+
+  return result;
+}
+
+/** Strip aside/nav/header/footer from Djinni HTML for main-content extraction. */
+function extractDjinniMainContent(html) {
+  let content = html;
+  const mainMatch = html.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
+  if (mainMatch) content = mainMatch[1];
+  content = content.replace(/<aside[^>]*>[\s\S]*?<\/aside>/gi, "");
+  return content;
+}
+
 async function fetchGenericPosting(parsedUrl, fetchImpl, { preloadedHtml } = {}) {
   let html = preloadedHtml;
 
@@ -959,6 +1257,9 @@ async function getJobPosting(url, { fetchImpl = fetch, summary = false } = {}) {
     case "workable":
       posting = await fetchWorkablePosting(finalParsed, fetchImpl);
       break;
+    case "djinni":
+      posting = await fetchDjinniPosting(finalParsed, fetchImpl);
+      break;
     default:
       posting = await fetchGenericPosting(finalParsed, fetchImpl, { preloadedHtml });
       break;
@@ -997,10 +1298,13 @@ module.exports = {
   isPrivateHost,
   isAggregatorHost,
   isDouHost,
+  isDjinniHost,
   isKnownAtsHost,
   decodeHtmlEntities,
   htmlToPlainText,
   extractRequirements,
   detectAdapter,
-  validateUrl
+  validateUrl,
+  parseDjinniHtml,
+  parseDjinniSidebar
 };

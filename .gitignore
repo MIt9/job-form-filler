@@ -10,3 +10,4 @@ learned-answers.json
 *.mov
 *.mp4
 !docs/demo.mp4
+*.local.md

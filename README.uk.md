@@ -1,6 +1,6 @@
 # ⚡ Job Form Filler (0-Token & AI Hybrid)
 
-Розширення для Google Chrome + опційний локальний міст (Local Bridge & MCP Server) для заповнення форм вакансій (Ashby, Greenhouse, Lever, Workable, LinkedIn Easy Apply та будь-які інші).
+Розширення для Google Chrome + опційний локальний міст (Local Bridge & MCP Server) для заповнення форм вакансій (Ashby, Greenhouse, Lever, Workable, LinkedIn Easy Apply, Djinni та будь-які інші).
 
 Замість того щоб віддавати ШІ весь DOM або скріншоти, розширення ділить поля на рівні:
 1. **Tier 1 (0 токенів)**: стандартні поля (ім'я, контакти, адреса, лінки, дозвіл на роботу, віза, релокація, notice period, зарплата, EEO, файл резюме) заповнюються **локально з вашого профілю**.

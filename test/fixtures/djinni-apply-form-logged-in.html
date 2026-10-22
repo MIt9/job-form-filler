@@ -1,0 +1,88 @@
+<!-- Reconstructed 2026-10-22 from the LIVE logged-in Djinni page https://djinni.co/jobs/852626-fullstack-engineer-typescript-ai-integration/
+     (DOM serialised via JS: tags, ids, names, classes, types, styles, labels and texts are real; csrf token removed;
+     long attribute values truncated at 60 chars; query-string characters in texts replaced with spaces; nothing submitted).
+     Openers (outside the form, siblings in the page):
+       <button type="submit" class="btn btn-primary js-inbox-toggle-reply-form js-analytics-event" data-analytics="job_apply_form_displayed">Відгукнутися на вакансію</button>   (main column, NOT inside any <form>)
+       <button type="button" class="btn btn-primary w-100 mb-3 js-inbox-toggle-reply-form js-analytics-event" data-analytics="job_apply_form_displayed">Відгукнутися на вакансію</button> (sidebar) -->
+<form id="apply_form" class="mt-5 js-inbox-reply-form" style="display:none">
+  <h2 id="job-application-heading" class="mb-3">Відгук на вакансію</h2>
+  <div class="card card-body shadow-lg">
+    <input name="apply" type="hidden" value="true">
+    <div class="mb-1">
+      <input name="quiz_id" type="hidden" value="62460">
+      <h3 class="mb-3">Запитання від рекрутера</h3>
+      <div class="mb-3">
+        <label class="form-label form-label" for="answer_numeric_1">English How many years of commercial experience do you have with AI integration?</label>
+        <input id="answer_numeric_1" name="answer_169876" type="number" class="form-control text-center " style="width: 80px;" placeholder=".." required>
+      </div>
+    </div>
+    <div>
+      <h3>Повідомлення та контакти</h3>
+      <div class="mb-1">
+        <div class="mb-2">
+          <label class="form-label" for="message">Повідомлення</label>
+          <textarea id="message" name="message" class="form-control js-auto-resize " style="max-height: 100vh; line-height: 24px;" placeholder="Розкажіть що зацікавило вас в цій вакансії і чому ви підійдете." minlength="None"></textarea>
+          <!-- next: div id="candidate_apply_..." with the 50-char hint (truncated in capture) -->
+          <div class="form-check">
+            <input id="save_msg_template" name="save_msg_template" type="checkbox" class="form-check-input" value="on">
+            <label for="save_msg_template">Зберегти повідомлення як шаблон</label>
+          </div>
+          <input id="msg_template_name" name="msg_template_name" type="text" class="form-control " placeholder="Назва шаблону, наприклад Cover Letter">
+          <div class="mt-2">
+            <h4>Шаблони</h4>
+            <table class="table table-hover"><tbody>
+              <tr id="tr_100001" style="cursor:pointer;">
+                <td class="js-template-put" style="padding: 8px 5px 8px 3px; border-top: 0 !important;"><span class="small"><a class="toggle-help" style="text-decoration:none">My saved template...</a></span></td>
+                <td class="js-template-remove" style="padding-right: 12px; border-top: 0 !important;"><a style="text-decoration:none"><svg class="bi bi-svg " aria-hidden="true"><use></use></svg></a></td>
+              </tr>
+            </tbody></table>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-10">
+          <div class="mb-2">
+            <label class="form-label">Резюме</label>
+            <div class="js-cv-select-block ">
+              <!-- TomSelect: the native <select> is visually hidden (ts-hidden-accessible); the visible control is .ts-wrapper -->
+              <select id="tomselect-1" name="cv_file_upload_id" class="form-select js-cv-url-input tomselected ts-hidden-accessible" tabindex="-1">
+                <option value="1000001" selected>resume-candidate.pdf</option>
+                <option value="">Не показувати резюме</option>
+                <option value="1000001">resume-candidate.pdf</option>
+              </select>
+              <div class="ts-wrapper form-select js-cv-url-input single input-hidden f">
+                <div class="ts-control">
+                  <div class="item"><div class="fw-medium">resume-candidate.pdf</div></div>
+                  <input id="tomselect-1-ts-control" type="text" placeholder="Не показувати резюме" role="combobox" tabindex="0">
+                </div>
+              </div>
+            </div>
+            <a class="small" role="button">+ Додати резюме</a>
+          </div>
+        </div>
+      </div>
+      <div class="mb-2">
+        <div class="">
+          <div class="row align-items-center">
+            <div class="col-sm-auto"><label class="form-label py-2 m-0">Зарплатні очікування</label></div>
+            <div class="col-sm">
+              <div class="d-flex align-items-center flex-wrap">
+                <span class="text-decoration-line-through text-gray-600 me-1 js-initial-s">$<span class="js-initial-salary-text-value">4000</span></span>
+                <span class="me-1 font-weight-500 js-salary-text-wrapper">$<span class="js-salary-text-value">4000</span></span>
+                <input name="salary_changed" type="number" class="form-control me-1 rounded-lg d-none js-salary-input" style="width: 100px;">
+                <button type="button" class="btn btn-link p-1 d-none js-salary-cancel-btn">Скасувати зміну</button>
+                <button type="button" class="btn btn-link p-1 js-salary-toggle-btn">Змінити для цієї вакансії</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="text-danger need-linkedin-or-resume" style="display: none;">Для відгуку на вакансію потрібно вказати профіль LinkedIn або резюме.</p>
+        <p class="text-danger incorrect-linkedin" style="display: none;">Некоректна адреса LinkedIn</p>
+      </div>
+      <button id="job_apply" name="job_apply" type="submit" class="btn btn-primary btn-lg">Надіслати відгук</button>
+      <a>Вкажіть в налаштуваннях акаунту</a>
+    </div>
+  </div>
+</form>

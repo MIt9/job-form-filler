@@ -476,7 +476,248 @@
     if (host.includes("linkedin.com") && document.querySelector(".jobs-easy-apply-modal")) {
       return "LinkedIn Easy Apply";
     }
+    if (host === "djinni.co" || host.endsWith(".djinni.co")) {
+      return "Djinni";
+    }
     return "Generic Job Board";
+  }
+
+  // ── Djinni helpers ────────────────────────────────────────────────────────
+
+  /**
+   * Returns true when the current URL is a Djinni vacancy page (/jobs/<id>-<slug>/).
+   * Returns false on the jobs list/filter page (/jobs/ with query params).
+   */
+  function isDjinniVacancyPage() {
+    const host = window.location.hostname.toLowerCase();
+    if (host !== "djinni.co" && !host.endsWith(".djinni.co")) return false;
+    return /^\/jobs\/\d+-[^/]+\/?$/.test(window.location.pathname);
+  }
+
+  /**
+   * Returns true when the current URL is a Djinni jobs listing page
+   * (/jobs/ with no vacancy id-slug, i.e. the search/filter page).
+   */
+  function isDjinniListPage() {
+    const host = window.location.hostname.toLowerCase();
+    if (host !== "djinni.co" && !host.endsWith(".djinni.co")) return false;
+    return /^\/jobs\/?$/.test(window.location.pathname);
+  }
+
+  /**
+   * Read the Djinni inline apply form state.
+   *
+   * The form is hidden until the candidate clicks "Відгукнутися на вакансію".
+   * Once open, it contains:
+   *   - message textarea (fieldId: "djinni_message")
+   *   - resume combobox (fieldId: "djinni_resume")
+   *   - salary number input (fieldId: "djinni_salary"), only visible after
+   *     clicking "Змінити для цієї вакансії"
+   *
+   * Also reads the logged-in sidebar facts that are not available server-side:
+   *   - salary fit hint ("Ваші зарплатні очікування …")
+   *   - "Ваші очікування" (the candidate's current salary setting)
+   *   - already-applied state ("Ви вже відгукнулись…")
+   */
+  function hasHiddenAncestor(el) {
+    for (let n = el; n && n.nodeType === 1; n = n.parentElement) {
+      if (n.classList.contains("d-none") || window.getComputedStyle(n).display === "none") return true;
+    }
+    return false;
+  }
+
+  // Real Djinni selectors (captured from a logged-in page, see test/fixtures/djinni-apply-form-logged-in.html).
+  const DJ = {
+    message: "#apply_form textarea[name='message']",
+    resume: "#apply_form select[name='cv_file_upload_id']",
+    salaryInput: "#apply_form input[name='salary_changed']",
+    salaryToggle: "#apply_form .js-salary-toggle-btn",
+    quiz: "#apply_form [name^='answer_']"
+  };
+
+  const djText = (el) => (el ? (el.textContent || "").replace(/\s+/g, " ").trim() : "");
+
+  // Recruiter screening questions ("Запитання від рекрутера"): one entry per answer_<id> control (radio groups merged).
+  // They are knockout questions, so every one is flagged humanRequired: the caller must ask the candidate.
+  function getDjinniQuizQuestions() {
+    const seen = new Set();
+    const out = [];
+    for (const el of document.querySelectorAll(DJ.quiz)) {
+      if (seen.has(el.name)) continue;
+      seen.add(el.name);
+      const group = Array.from(document.querySelectorAll(DJ.quiz)).filter((x) => x.name === el.name);
+      const labelOf = (x) => djText(x.id && document.querySelector(`label[for="${CSS.escape(x.id)}"]`));
+      const isChoice = el.type === "radio" || el.type === "checkbox";
+      const q = {
+        fieldId: el.name,
+        label: isChoice ? djText(el.closest(".mb-3, fieldset")?.querySelector("legend, .form-label, label")) : labelOf(el),
+        type: el.tagName === "SELECT" ? "select" : el.tagName === "TEXTAREA" ? "textarea" : el.type === "radio" ? "radio" : el.type === "checkbox" ? "checkbox-group" : el.type || "text",
+        required: group.some((x) => x.required),
+        value: isChoice ? group.filter((x) => x.checked).map(labelOf).join(", ") : el.value,
+        humanRequired: true,
+        knockout: true
+      };
+      if (el.tagName === "SELECT") q.options = Array.from(el.options).map((o) => o.text.trim()).filter(Boolean);
+      if (isChoice) q.options = group.map(labelOf);
+      out.push(q);
+    }
+    return out;
+  }
+
+  function getDjinniFormState() {
+    // ── Already-applied detection ─────────────────────────────────────────
+    const bodyText = document.body ? document.body.innerText : "";
+    const alreadyApplied = /ви вже відгукнулись на цю вакансію/i.test(bodyText);
+
+    // ── Sidebar logged-in facts ──────────────────────────────────────────
+    let salaryFitHint = null;
+    const aside = document.querySelector("aside");
+    const asideText = aside ? aside.innerText || aside.textContent || "" : "";
+    const fitMatch = asideText.match(/(ваші зарплатні очікування[^\n.]+)/i);
+    if (fitMatch) salaryFitHint = fitMatch[1].trim();
+    const expectMatch = asideText.match(/ваші очікування:\s*(\S+)/i);
+    if (expectMatch && !salaryFitHint) salaryFitHint = `Ваші очікування: ${expectMatch[1].trim()}`;
+
+    // The form is always in the DOM (#apply_form, style="display:none") until an opener is clicked.
+    const messageTextarea = document.querySelector(DJ.message);
+    if (!messageTextarea || hasHiddenAncestor(messageTextarea)) {
+      return { formClosed: true, openerLabel: "Відгукнутися на вакансію", alreadyApplied, salaryFitHint };
+    }
+
+    const fields = [
+      {
+        fieldId: "djinni_message",
+        label: "Повідомлення",
+        type: "textarea",
+        required: true,
+        minLength: 50,
+        placeholder: messageTextarea.placeholder || "",
+        value: messageTextarea.value || ""
+      }
+    ];
+
+    // Resume: native select behind TomSelect. Duplicate option texts are collapsed.
+    const resumeSelect = document.querySelector(DJ.resume);
+    if (resumeSelect) {
+      const options = Array.from(new Set(Array.from(resumeSelect.options).map((o) => o.text.trim()).filter(Boolean)));
+      fields.push({
+        fieldId: "djinni_resume",
+        label: "Резюме",
+        type: "select",
+        options,
+        value: resumeSelect.options[resumeSelect.selectedIndex]?.text.trim() || ""
+      });
+    }
+
+    // Salary override: input.d-none until .js-salary-toggle-btn is clicked.
+    const salaryInput = document.querySelector(DJ.salaryInput);
+    const overrideOpen = !!salaryInput && !hasHiddenAncestor(salaryInput);
+    fields.push({
+      fieldId: "djinni_salary",
+      label: "Зарплатні очікування",
+      type: "number",
+      overrideOpen,
+      openerLabel: overrideOpen ? null : "Змінити для цієї вакансії",
+      currentDisplay: djText(document.querySelector("#apply_form .js-salary-text-value")) || null,
+      value: overrideOpen ? salaryInput.value : null
+    });
+
+    return {
+      formClosed: false,
+      fields,
+      questions: getDjinniQuizQuestions(),
+      alreadyApplied,
+      salaryFitHint,
+      // Final submit button "Надіслати відгук" is never clicked by tools
+      submitDenied: true,
+      submitLabel: "Надіслати відгук"
+    };
+  }
+
+  /**
+   * Fill the Djinni inline apply form: message, resume (TomSelect-aware), salary override and
+   * recruiter quiz answers (keyed by answer_<id> or by label text).
+   * @returns {{filled: string[], notFound: string[], failed: string[]}}
+   */
+  function fillDjinniForm(answers) {
+    const filled = [];
+    const notFound = [];
+    const failed = [];
+
+    for (const [key, value] of Object.entries(answers || {})) {
+      if (value === undefined || value === null) continue;
+      const keyNorm = key.toLowerCase().replace(/\s+/g, "_");
+
+      if (keyNorm === "djinni_message") {
+        const ta = document.querySelector(DJ.message);
+        if (!ta) { notFound.push(key); continue; }
+        try {
+          replaceFieldValue(ta, String(value));
+          filled.push(key);
+        } catch (e) { failed.push(key); }
+        continue;
+      }
+
+      if (keyNorm === "djinni_resume") {
+        const sel = document.querySelector(DJ.resume);
+        if (!sel) { notFound.push(key); continue; }
+        const target = String(value).trim().toLowerCase();
+        const opt = Array.from(sel.options).find((o) => o.text.trim().toLowerCase() === target);
+        if (!opt) { failed.push(`${key} (option "${value}" not found)`); continue; }
+        if (sel.tomselect) {
+          sel.tomselect.setValue(opt.value);
+        } else {
+          sel.value = opt.value;
+          sel.dispatchEvent(new Event("input", { bubbles: true }));
+          sel.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        filled.push(key);
+        continue;
+      }
+
+      if (keyNorm === "djinni_salary") {
+        let inp = document.querySelector(DJ.salaryInput);
+        if (!inp) { notFound.push(key); continue; }
+        if (hasHiddenAncestor(inp)) {
+          // Reveal the per-vacancy override first (a plain navigation toggle, not a submit).
+          const toggle = document.querySelector(DJ.salaryToggle);
+          if (toggle) dispatchUserClick(toggle);
+          if (hasHiddenAncestor(inp)) { failed.push(`${key} (override input still hidden; click "Змінити для цієї вакансії")`); continue; }
+        }
+        try {
+          replaceFieldValue(inp, String(value));
+          filled.push(key);
+        } catch (e) { failed.push(key); }
+        continue;
+      }
+
+      // Recruiter quiz answer, by name (answer_<id>) or exact label text
+      const quiz = getDjinniQuizQuestions().find((q) => q.fieldId === key || q.label.toLowerCase() === String(key).trim().toLowerCase());
+      if (quiz) {
+        const els = Array.from(document.querySelectorAll(DJ.quiz)).filter((x) => x.name === quiz.fieldId);
+        try {
+          if (els[0].type === "radio" || els[0].type === "checkbox") {
+            const want = String(value).trim().toLowerCase();
+            const idx = quiz.options.findIndex((o) => o.toLowerCase() === want);
+            if (idx < 0) { failed.push(`${key} (option "${value}" not found)`); continue; }
+            dispatchUserClick(els[idx]);
+          } else if (els[0].tagName === "SELECT") {
+            const opt = Array.from(els[0].options).find((o) => o.text.trim().toLowerCase() === String(value).trim().toLowerCase());
+            if (!opt) { failed.push(`${key} (option "${value}" not found)`); continue; }
+            els[0].value = opt.value;
+            els[0].dispatchEvent(new Event("change", { bubbles: true }));
+          } else {
+            replaceFieldValue(els[0], String(value));
+          }
+          filled.push(key);
+        } catch (e) { failed.push(key); }
+        continue;
+      }
+
+      notFound.push(key);
+    }
+
+    return { filled, notFound, failed };
   }
 
   // Helper to check if text is a generic non-question placeholder
@@ -1789,6 +2030,9 @@
       /your\s+application\s+has\s+been\s+sent/i,
       /successfully\s+submitted/i,
       /дякуємо|заявк[уа] (успішно )?(надіслано|отримано|відправлено)/i,
+      // Djinni-specific success phrases (item 5)
+      /джин відправив ваш відгук/i,
+      /ви вже відгукнулись на цю вакансію/i,
       /dziękujemy|aplikacja (została )?(wysłana|przesłana)/i,
       /vielen dank|bewerbung (ist )?(eingegangen|erhalten|versendet)/i,
       /merci (pour|de) votre candidature|candidature (a été )?(envoyée|reçue)/i,
@@ -1798,13 +2042,23 @@
       /bedankt voor (je|uw) sollicitatie|sollicitatie (is )?(ontvangen|verzonden)/i
     ];
 
+    // Djinni-specific URL detection: ?applied=ok
+    const resolvedUrl = tabUrl || window.location.href;
+    const djinniAppliedUrl = /[?&]applied=ok/.test(resolvedUrl) &&
+      (/djinni\.co/i.test(resolvedUrl));
+
     const textHit = successKeywords.some((pattern) => pattern.test(text) || headings.some((h) => pattern.test(h)));
-    const urlHit = H.fhSubmissionByUrl(tabUrl || window.location.href);
+    const urlHit = H.fhSubmissionByUrl(resolvedUrl) || djinniAppliedUrl;
     const isSubmitted = urlHit || textHit;
+
+    // Djinni: already-applied block is a distinct state from the post-submit banner
+    const alreadyApplied = /ви вже відгукнулись на цю вакансію/i.test(text) && !djinniAppliedUrl;
+
     const matchedHeading = headings.find((h) => successKeywords.some((p) => p.test(h))) || (isSubmitted ? "Application Submitted" : null);
 
     return {
       isSubmitted,
+      ...(alreadyApplied ? { alreadyApplied: true } : {}),
       matchedBy: urlHit ? "url" : textHit ? "text" : null,
       headline: matchedHeading || (headings[0] || ""),
       url: window.location.href,
@@ -1820,17 +2074,38 @@
     "продовжити", "далі", "зберегти й продовжити", "зберегти та продовжити",
     "weiter", "continuer", "siguiente", "avançar"
   ];
+  // Djinni-only navigation labels: these open the apply form / reveal salary input on djinni.co.
+  // They are NOT added to the global NAV_ALLOWED to avoid accidentally clicking them on other sites
+  // where similar Ukrainian text might appear. clickButton checks isDjinniVacancyPage() before
+  // accepting them.
+  const DJINNI_NAV_ALLOWED = [
+    "відгукнутися на вакансію",  // opens the inline apply form (safe: does NOT submit)
+    "змінити для цієї вакансії"  // reveals the per-vacancy salary override input
+    // "надіслати відгук" is the FINAL SUBMIT — intentionally ABSENT here
+  ];
   const NAV_DENIED_RE = /submit|\bsend\b|надіслати|відправити|подати заявку|\bapply\b(?!\s+now)|confirm|finish|complete|delete|withdraw|remove|discard|\bpay\b|\bbuy\b|place order|відкликати|видалити|оплатити/i;
 
   function clickButton(text) {
     const norm = (s) => String(s || "").replace(/\s+/g, " ").trim().toLowerCase();
     const wanted = norm(text);
     if (!wanted) return { success: false, denied: true, reason: "No button text provided", allowed: NAV_ALLOWED };
-    if (!NAV_ALLOWED.includes(wanted)) {
+
+    // Check global allowlist first
+    const globalAllowed = NAV_ALLOWED.includes(wanted);
+
+    // Check Djinni-specific allowlist — only valid on a Djinni vacancy page
+    const djinniAllowed = DJINNI_NAV_ALLOWED.includes(wanted) && isDjinniVacancyPage();
+
+    if (!globalAllowed && !djinniAllowed) {
+      // "надіслати відгук" (final submit) hits NAV_DENIED_RE → report denied:true
+      if (NAV_DENIED_RE.test(wanted)) {
+        return { success: false, denied: true, reason: `"${text}" is not an allowed navigation label`, allowed: NAV_ALLOWED };
+      }
       return { success: false, denied: true, reason: `"${text}" is not an allowed navigation label`, allowed: NAV_ALLOWED };
     }
 
-    const scope = H.fhGetApplicationScope(document) || document;
+    // Djinni: the opener buttons sit OUTSIDE the (hidden) #apply_form that the generic scope would pick.
+    const scope = djinniAllowed ? document : (H.fhGetApplicationScope(document) || document);
     const buttons = Array.from(scope.querySelectorAll("button, [role='button'], input[type='button'], input[type='submit'], a[role='button']"));
     const labelsOf = (b) => [b.innerText || b.textContent, b.getAttribute("aria-label"), b.value].map(norm).filter(Boolean);
     const visible = (b) => {
@@ -1873,7 +2148,38 @@
         return true; // Keep message channel open for async response
 
       case "GET_JOB_AND_QUESTIONS":
-        sendResponse(extractJobAndQuestions(message.full));
+        // Djinni list page: return notAVacancyPage instead of the ~250 country-filter options
+        if (isDjinniListPage()) {
+          sendResponse({ notAVacancyPage: true, reason: "Djinni jobs list/filter page — open a specific vacancy URL (/jobs/<id>-<slug>/) first." });
+        } else if (isDjinniVacancyPage()) {
+          // On a Djinni vacancy page, return the inline form state
+          sendResponse(getDjinniFormState());
+        } else {
+          sendResponse(extractJobAndQuestions(message.full));
+        }
+        break;
+
+      case "GET_ACTIVE_FORM":
+        // Bridge sends GET_ACTIVE_FORM for get_active_job_form MCP tool
+        if (isDjinniListPage()) {
+          sendResponse({ notAVacancyPage: true, reason: "Djinni jobs list/filter page — open a specific vacancy URL (/jobs/<id>-<slug>/) first." });
+        } else if (isDjinniVacancyPage()) {
+          sendResponse(getDjinniFormState());
+        } else {
+          sendResponse(extractJobAndQuestions(message.full));
+        }
+        break;
+
+      case "FILL_FORM":
+        // Djinni: handle Djinni-specific fields directly
+        if (isDjinniVacancyPage()) {
+          sendResponse(fillDjinniForm(message.answers));
+        } else {
+          injectAIAnswers(message.answers).then((injectResult) => {
+            sendResponse(injectResult);
+          });
+          return true;
+        }
         break;
 
       case "GET_FORM_STATE":
@@ -1885,6 +2191,11 @@
         break;
 
       case "INJECT_AI_ANSWERS":
+        // background.js FILL_FORM sends INJECT_AI_ANSWERS, so the Djinni path must live here too.
+        if (isDjinniVacancyPage()) {
+          sendResponse(fillDjinniForm(message.answers));
+          break;
+        }
         injectAIAnswers(message.answers).then((injectResult) => {
           sendResponse(injectResult);
         });
@@ -1912,6 +2223,6 @@
 
   // Test-only export (no-op in the real extension: module is undefined there).
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = { classifyField, replaceFieldValue };
+    module.exports = { classifyField, replaceFieldValue, getDjinniFormState, fillDjinniForm, isDjinniVacancyPage, isDjinniListPage, getSubmissionStatus };
   }
 })();

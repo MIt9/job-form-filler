@@ -23,7 +23,7 @@ Job Form Filler is a Chrome extension (and optional local MCP server) that fills
 | `activeTab`, `scripting` | Read and fill the form on the tab where you click the extension. |
 | `tabs`, `webNavigation` | Find the application tab and its frames (many ATS embed forms in iframes). |
 | `alarms` | Keep the connection to the optional local bridge alive. |
-| Host access to `ashbyhq.com`, `greenhouse.io`, `lever.co`, `workable.com`, `linkedin.com` | Run the form filler on these job boards. |
+| Host access to `ashbyhq.com`, `greenhouse.io`, `lever.co`, `workable.com`, `linkedin.com`, `djinni.co` | Run the form filler on these job boards. |
 | `localhost` / `127.0.0.1` | Talk to the optional local bridge. |
 | `<all_urls>` (optional, off by default) | Only if you enable "Work on any website" for custom career pages. You can revoke it any time in `chrome://extensions`. |
 

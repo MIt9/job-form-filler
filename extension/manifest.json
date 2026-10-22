@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_appName__",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "__MSG_appDesc__",
   "default_locale": "en",
   "permissions": [
@@ -18,6 +18,7 @@
     "*://*.lever.co/*",
     "*://*.workable.com/*",
     "*://*.linkedin.com/*",
+    "*://*.djinni.co/*",
     "http://127.0.0.1/*",
     "http://localhost/*"
   ],
@@ -43,7 +44,8 @@
         "*://*.greenhouse.io/*",
         "*://*.lever.co/*",
         "*://*.workable.com/*",
-        "*://*.linkedin.com/*"
+        "*://*.linkedin.com/*",
+        "*://*.djinni.co/*"
       ],
       "all_frames": true,
       "match_about_blank": true,
