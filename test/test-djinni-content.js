@@ -261,6 +261,9 @@ console.log("▶ Testing Djinni content-script integration against the real logg
     assert.strictEqual(byLabel(/Повідомлення/).value, text);
     assert.strictEqual(byLabel(/Резюме/).value, "resume-candidate.pdf", JSON.stringify(st.fields));
     assert.ok(st.fields.some((f) => f.value === "5500"), JSON.stringify(st.fields));
+    // same fieldIds as get_active_job_form / fill_job_form; template checkbox and TomSelect's own input excluded
+    assert.deepStrictEqual(Array.from(st.fields, (f) => f).map((f) => f.fieldId).filter((id) => id.startsWith("djinni_")), ["djinni_message", "djinni_resume", "djinni_salary"]);
+    assert.ok(!st.fields.some((f) => /шаблон/i.test(f.label) || /ts-control/.test(f.fieldId)), JSON.stringify(st.fields));
     p.close();
     console.log("✔ H) fill: message, resume (TomSelect.setValue), salary (only once override is open); get_form_state shows real values");
   }
@@ -306,6 +309,8 @@ console.log("▶ Testing Djinni content-script integration against the real logg
     // "Ви вже відгукнулись" on a fresh visit (not ?applied=ok)
     const alreadyAppliedHtml = `<body><main>
       <h1>Senior Full-Stack Tech Lead</h1>
+      <svg class="bi bi-svg text-success"></svg>
+      <div>${"Long vacancy description. ".repeat(400)}</div>
       <div>Ви вже відгукнулись на цю вакансію. Відкрити діалог →</div>
     </main></body>`;
     const p = load(alreadyAppliedHtml);

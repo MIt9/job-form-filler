@@ -246,7 +246,8 @@ async function broadcastToAllFrames(tab, message) {
     if (chrome.webNavigation && chrome.webNavigation.getAllFrames) {
       const frames = await chrome.webNavigation.getAllFrames({ tabId: tab.id });
       if (frames && frames.length > 0) {
-        frameIds = frames.map((f) => f.frameId);
+        // Main frame (0) first: callers fall back to results[0], which must not be an about:blank iframe.
+        frameIds = frames.map((f) => f.frameId).sort((a, b) => a - b);
       }
     }
   } catch (e) {}
@@ -454,7 +455,11 @@ async function handleBridgeMessage(message) {
         action: "CLICK_BUTTON",
         text: payload.text
       });
-      const result = results.find((r) => r && r.success) || results.find((r) => r && r.denied) || results[0] || { success: false, reason: "No response from content script" };
+      // A frame refusing a matching button wins; a frame merely not knowing the label (e.g. a Djinni-only label
+      // in an about:blank iframe) must not hide the main frame's answer.
+      const result = results.find((r) => r && r.success) ||
+        results.find((r) => r && r.denied && /looks like a final/.test(r.reason || "")) ||
+        results[0] || { success: false, reason: "No response from content script" };
       sendBridgeResponse(requestId, { success: true, data: result });
 
     } else if (command === "GET_SUBMISSION_STATUS") {

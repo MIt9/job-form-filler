@@ -581,7 +581,14 @@
     // The form is always in the DOM (#apply_form, style="display:none") until an opener is clicked.
     const messageTextarea = document.querySelector(DJ.message);
     if (!messageTextarea || hasHiddenAncestor(messageTextarea)) {
-      return { formClosed: true, openerLabel: "Відгукнутися на вакансію", alreadyApplied, salaryFitHint };
+      // Djinni drops the opener when the candidate already applied or the profile misses a hard requirement.
+      const hasOpener = Array.from(document.querySelectorAll("button, a")).some((b) => /^\s*відгукнутися на вакансію\s*$/i.test(b.textContent));
+      if (hasOpener) return { formClosed: true, openerLabel: "Відгукнутися на вакансію", alreadyApplied, salaryFitHint };
+      const mismatch = bodyText.match(/ваш профіль не відповідає[^\n]*/i);
+      return {
+        formClosed: true, openerLabel: null, cannotApply: true, alreadyApplied, salaryFitHint,
+        cannotApplyReason: alreadyApplied ? "Ви вже відгукнулись на цю вакансію" : mismatch ? mismatch[0].trim() : "No apply button on this page"
+      };
     }
 
     const fields = [
@@ -632,6 +639,18 @@
       submitDenied: true,
       submitLabel: "Надіслати відгук"
     };
+  }
+
+  // get_form_state on Djinni: the same fieldIds as get_active_job_form / fill_job_form, without template and
+  // TomSelect internals. The salary shows the profile value until the per-vacancy override is open.
+  function getDjinniFormStateFields(maxValueLength, includeEmpty) {
+    const state = getDjinniFormState();
+    return [...(state.fields || []), ...(state.questions || [])]
+      .map((f) => {
+        const value = String(f.value ?? f.currentDisplay ?? "");
+        return { fieldId: f.fieldId, label: f.label, type: f.type, required: !!f.required, filled: value !== "", value: value.slice(0, maxValueLength) };
+      })
+      .filter((f) => includeEmpty || f.filled);
   }
 
   /**
@@ -2017,9 +2036,11 @@
 
   // Verification helper: Checks page headline/banner for application success without full rescanning
   function getSubmissionStatus(tabUrl) {
-    const text = document.body ? document.body.innerText.slice(0, 5000) : "";
+    const fullText = document.body ? document.body.innerText : "";
+    const text = fullText.slice(0, 5000);
     const headings = Array.from(document.querySelectorAll("h1, h2, h3, [role='alert'], [class*='success'], [class*='confirmation']"))
-      .map((el) => el.innerText.trim())
+      // [class*='success'] also matches SVG icons, which have no innerText.
+      .map((el) => (el.innerText ?? el.textContent ?? "").trim())
       .filter((t) => t.length > 0 && t.length < 150);
 
     const successKeywords = [
@@ -2047,12 +2068,15 @@
     const djinniAppliedUrl = /[?&]applied=ok/.test(resolvedUrl) &&
       (/djinni\.co/i.test(resolvedUrl));
 
-    const textHit = successKeywords.some((pattern) => pattern.test(text) || headings.some((h) => pattern.test(h)));
+    // Djinni puts the "already applied" block below the full description, past the 5000-char window.
+    const djinniAppliedText = isDjinniVacancyPage() && /ви вже відгукнулись на цю вакансію/i.test(fullText);
+
+    const textHit = djinniAppliedText || successKeywords.some((pattern) => pattern.test(text) || headings.some((h) => pattern.test(h)));
     const urlHit = H.fhSubmissionByUrl(resolvedUrl) || djinniAppliedUrl;
     const isSubmitted = urlHit || textHit;
 
     // Djinni: already-applied block is a distinct state from the post-submit banner
-    const alreadyApplied = /ви вже відгукнулись на цю вакансію/i.test(text) && !djinniAppliedUrl;
+    const alreadyApplied = djinniAppliedText && !djinniAppliedUrl;
 
     const matchedHeading = headings.find((h) => successKeywords.some((p) => p.test(h))) || (isSubmitted ? "Application Submitted" : null);
 
@@ -2183,7 +2207,9 @@
         break;
 
       case "GET_FORM_STATE":
-        sendResponse({ fields: getFormState(message.maxValueLength, message.includeEmpty !== false) });
+        sendResponse({ fields: isDjinniVacancyPage()
+          ? getDjinniFormStateFields(message.maxValueLength || 120, message.includeEmpty !== false)
+          : getFormState(message.maxValueLength, message.includeEmpty !== false) });
         break;
 
       case "GET_SUBMISSION_STATUS":

@@ -38,7 +38,8 @@ function loadContent(html, url) {
 }
 
 // Boot background.js in a vm; tabs.sendMessage is routed into the jsdom content script.
-async function loadBackground(page, tabUrl) {
+// Optional `iframe`: a second content-script frame (frameId 5) that getAllFrames lists BEFORE the main frame.
+async function loadBackground(page, tabUrl, iframe) {
   const sent = [];
   const sockets = [];
   class FakeWS {
@@ -58,9 +59,10 @@ async function loadBackground(page, tabUrl) {
       sendMessage: (tabId, msg, opts, cb) => {
         if (typeof opts === "function") cb = opts;
         if (msg.action === "PING") return cb({ pong: true });
-        page.dispatch(msg).then(cb);
+        (iframe && opts && opts.frameId !== 0 ? iframe : page).dispatch(msg).then(cb);
       }
-    }
+    },
+    ...(iframe ? { webNavigation: { getAllFrames: async () => [{ frameId: 5 }, { frameId: 0 }] } } : {})
   };
   const ctx = vm.createContext({
     chrome, WebSocket: FakeWS, console: { log() {}, error() {} }, setTimeout, clearTimeout, setInterval, clearInterval,
@@ -121,6 +123,21 @@ console.log("▶ Testing Djinni wiring: bridge command -> background.js -> conte
   assert.strictEqual(status.isSubmitted, true, JSON.stringify(status));
   assert.strictEqual(status.alreadyApplied, true);
   console.log("✔ GET_SUBMISSION_STATUS keeps alreadyApplied through background.js");
+
+  // Live page where Djinni hides the opener (profile mismatch), plus an about:blank iframe listed first.
+  const noOpener = loadContent(`<body><main><h1>x</h1></main><aside>Ваш профіль не відповідає деяким вимогам, вказаним компанією</aside></body>`, URL_);
+  const blank = loadContent("<body></body>", "about:blank");
+  const callNoOpener = await loadBackground(noOpener, URL_, blank);
+  const nf = await callNoOpener("CLICK_BUTTON", { text: "Відгукнутися на вакансію" });
+  assert.strictEqual(nf.success, false);
+  assert.strictEqual(nf.denied, false, `main-frame "not found" must win over the iframe's denial: ${JSON.stringify(nf)}`);
+  const closedNoOpener = await callNoOpener("GET_ACTIVE_FORM");
+  assert.strictEqual(closedNoOpener.cannotApply, true, JSON.stringify(closedNoOpener));
+  assert.strictEqual(closedNoOpener.openerLabel, null);
+  assert.match(closedNoOpener.cannotApplyReason, /не відповідає/);
+  const st = await callNoOpener("GET_SUBMISSION_STATUS");
+  assert.strictEqual(st.url, URL_, `fallback must be the main frame, not about:blank: ${JSON.stringify(st)}`);
+  console.log("✔ no opener on the page: cannotApply, and the main frame's answer wins over an about:blank iframe");
 
   // List page
   const list = loadContent(`<body><main><h1>Вакансії</h1></main></body>`, "https://djinni.co/jobs/?primary_keyword=js");
