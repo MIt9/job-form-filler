@@ -1,6 +1,6 @@
 {
   "name": "job-form-filler",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Chrome Extension and Bridge/MCP Server for 0-token and AI-assisted job application form filling",
   "main": "server/bridge-server.js",
   "bin": {
@@ -22,7 +22,7 @@
     "mcp": "node bin/mcp.js",
     "release:mcp": "sh scripts/release-mcp.sh",
     "release:extension": "sh scripts/release-extension.sh",
-    "test": "node test/test-profiles.js && node test/test-bridge-command.js && node test/test-field-classification.js && node test/test-profile-merge.js && node test/test-replace-field-value.js && node test/test-job-posting.js && node test/log-application.test.js && node test/test-log-application-real-layout.js && node test/test-form-helpers.js && node test/test-form-integration.js && node test/test-job-posting-encoding.js && node test/test-manifest.js && node test/test-click-and-tabs.js && node test/test-bridge-port-reuse.js && node test/test-djinni-job-posting.js && node test/test-djinni-content.js && node test/test-djinni-wiring.js",
+    "test": "node test/test-profiles.js && node test/test-bridge-command.js && node test/test-field-classification.js && node test/test-profile-merge.js && node test/test-replace-field-value.js && node test/test-job-posting.js && node test/log-application.test.js && node test/test-log-application-real-layout.js && node test/test-form-helpers.js && node test/test-form-integration.js && node test/test-job-posting-encoding.js && node test/test-manifest.js && node test/test-click-and-tabs.js && node test/test-bridge-port-reuse.js && node test/test-bridge-takeover.js && node test/test-djinni-job-posting.js && node test/test-djinni-content.js && node test/test-djinni-wiring.js",
     "build:mcpb": "sh scripts/build-mcpb.sh"
   },
   "dependencies": {

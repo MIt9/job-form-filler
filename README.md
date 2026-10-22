@@ -29,7 +29,7 @@ Your profile and resume stay in `chrome.storage.local`. Nothing is sent anywhere
 
 The MCP server lets Claude read the form, answer custom questions from your resume, and fill them in.
 
-**Claude Desktop (one click):** download `job-form-filler-<version>.mcpb` from the [latest MCP release](https://github.com/MIt9/job-form-filler/releases/tag/mcp-v1.2.0) and double-click it. No Node.js install or config editing needed. You can optionally pick a folder with role-specific resumes in the extension settings.
+**Claude Desktop (one click):** download `job-form-filler-<version>.mcpb` from the [latest MCP release](https://github.com/MIt9/job-form-filler/releases/tag/mcp-v1.2.1) and double-click it. No Node.js install or config editing needed. You can optionally pick a folder with role-specific resumes in the extension settings.
 
 Claude Desktop asks for approval on every tool call by default. In the extension's settings you can safely switch the read-only tools (`Get active job form`, `Get form state`, `Get candidate profile`) and `Autofill static fields` to "Always allow". There is no submit tool: you always press Submit yourself.
 
@@ -60,6 +60,8 @@ Requires Node.js 18+ (not for the Claude Desktop bundle). The popup's **Settings
 | `JFF_ALLOW_ANY_EXTENSION` | Set to `1` to accept any extension. Local development only. |
 
 Env vars go into the `env` block of your MCP config, e.g. `"env": { "RESUME_REPO_PATH": "/path/to/resumes" }`.
+
+Several MCP clients (Claude Desktop, Claude Code) share one bridge: the first one started owns the port and its settings apply, so give them all the same `RESUME_REPO_PATH`. When the owner quits, the next tool call from another client takes the port over.
 
 ## Permissions
 

@@ -15,7 +15,37 @@ const { PROFILE_FIELDS } = require("../extension/shared/default-profile.js");
 
 const PROFILE_PATHS = PROFILE_FIELDS.filter((f) => f.path).map((f) => f.path);
 
-const BRIDGE_HTTP_URL = `http://127.0.0.1:${process.env.BRIDGE_PORT || 8765}/api`;
+const BRIDGE_PORT = process.env.BRIDGE_PORT || 8765;
+const BRIDGE_HTTP_URL = `http://127.0.0.1:${BRIDGE_PORT}/api`;
+// How long a call that just took the port over waits for the extension; its reconnect alarm fires every ~24s.
+const EXTENSION_RECONNECT_WAIT_MS = 30000;
+
+// This process's own bridge (initBridge). It stays unbound while another MCP client owns the port.
+let bridge = null;
+function initBridge() {
+  bridge = startBridgeServer(); // logs go to stderr — stdout is the MCP protocol channel
+  return bridge;
+}
+
+// The port owner (e.g. Claude Desktop) exited: bind the port ourselves, then give the extension time to reconnect.
+async function takeOverBridgePort() {
+  if (!bridge || bridge.server.listening) return false;
+  const bound = await new Promise((resolve) => {
+    const done = (ok) => { bridge.server.off("listening", onListening).off("error", onError); resolve(ok); };
+    const onListening = () => done(true);
+    const onError = () => done(false);
+    bridge.server.once("listening", onListening).once("error", onError);
+    bridge.server.listen(BRIDGE_PORT, "127.0.0.1");
+  });
+  if (!bound) return false;
+  configWarning = undefined;
+  console.error(`[JobFormFiller MCP] Took over bridge port ${BRIDGE_PORT}; waiting for the extension to reconnect`);
+  for (const end = Date.now() + EXTENSION_RECONNECT_WAIT_MS; Date.now() < end; await new Promise((r) => setTimeout(r, 250))) {
+    const status = await (await fetch(`${BRIDGE_HTTP_URL}/status`)).json().catch(() => ({}));
+    if (status.extensionConnected) break;
+  }
+  return true;
+}
 
 const INSTRUCTIONS = `Fills job application forms in the user's Chrome via the Job Form Filler extension.
 Step 0: open or focus the application form tab (via open_job_url or focus_tab); this server may open/focus tabs but never submits.
@@ -40,15 +70,22 @@ There is deliberately NO submit tool: the user reviews and clicks Submit. Afterw
  * bridge-server process that actually accepted the extension's WebSocket connection.
  */
 async function callBridge(command, payload = {}) {
+  const post = () => fetch(`${BRIDGE_HTTP_URL}/command`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ command, payload })
+  });
   let res;
   try {
-    res = await fetch(`${BRIDGE_HTTP_URL}/command`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ command, payload })
-    });
-  } catch (err) {
-    throw new Error(`Bridge server is not running on ${BRIDGE_HTTP_URL}. Restart the MCP server (it starts the bridge itself). (${err.message})`);
+    res = await post();
+  } catch {
+    // Losing the takeover race to another client is fine: the retry then reaches that client's bridge.
+    await takeOverBridgePort();
+    try {
+      res = await post();
+    } catch (err) {
+      throw new Error(`Bridge server is not running on ${BRIDGE_HTTP_URL}. Restart the MCP server (it starts the bridge itself). (${err.message})`);
+    }
   }
 
   const data = await res.json().catch(() => ({}));
@@ -304,8 +341,10 @@ async function callTool(name, args = {}) {
 
 // Another process may already own the bridge port (an older run, or another MCP client). We then talk to
 // that bridge, which ignores OUR settings: warn when its resume folder differs from the one configured here.
+// Reset when this process takes the port over (takeOverBridgePort).
 let configWarning;
 async function bridgeConfigWarning() {
+  if (bridge && bridge.server.listening) return null;
   if (configWarning !== undefined) return configWarning;
   configWarning = null;
   try {
@@ -313,8 +352,9 @@ async function bridgeConfigWarning() {
     const mine = DEFAULT_RESUME_REPO_PATH || "";
     if ((status.resumeRepoPath || "") !== mine) {
       configWarning =
-        `A bridge started earlier is running with resume folder "${status.resumeRepoPath || "(none)"}", not "${mine || "(none)"}". ` +
-        "Quit the other MCP client or process using port 8765, then restart this extension so its settings apply.";
+        `The bridge on port ${BRIDGE_PORT} belongs to another MCP client (e.g. Claude Desktop) and uses resume folder ` +
+        `"${status.resumeRepoPath || "(none)"}", not this client's "${mine || "(none)"}". ` +
+        "Give both clients the same RESUME_REPO_PATH, or quit the other one: this client takes the port over on its next call.";
     }
   } catch {}
   return configWarning;
@@ -340,11 +380,11 @@ async function runMcpServer() {
     }
   });
 
-  startBridgeServer(); // logs go to stderr — stdout is the MCP protocol channel
+  initBridge();
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error("[JobFormFiller MCP] Server running on stdio");
 }
 
-module.exports = { runMcpServer, callTool, TOOLS, INSTRUCTIONS };
+module.exports = { runMcpServer, callTool, TOOLS, INSTRUCTIONS, initBridge, callBridge, bridgeConfigWarning };
