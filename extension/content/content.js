@@ -612,6 +612,8 @@
         label: "Резюме",
         type: "select",
         options,
+        optionDetails: Array.from(resumeSelect.options, (o) => ({ value: o.value, label: o.text.trim() })),
+        selectedValue: resumeSelect.value,
         value: resumeSelect.options[resumeSelect.selectedIndex]?.text.trim() || ""
       });
     }
@@ -681,7 +683,7 @@
         const sel = document.querySelector(DJ.resume);
         if (!sel) { notFound.push(key); continue; }
         const target = String(value).trim().toLowerCase();
-        const opt = Array.from(sel.options).find((o) => o.text.trim().toLowerCase() === target);
+        const opt = Array.from(sel.options).find((o) => o.value === String(value) || o.text.trim().toLowerCase() === target);
         if (!opt) { failed.push(`${key} (option "${value}" not found)`); continue; }
         if (sel.tomselect) {
           sel.tomselect.setValue(opt.value);
@@ -2109,6 +2111,45 @@
   ];
   const NAV_DENIED_RE = /submit|\bsend\b|надіслати|відправити|подати заявку|\bapply\b(?!\s+now)|confirm|finish|complete|delete|withdraw|remove|discard|\bpay\b|\bbuy\b|place order|відкликати|видалити|оплатити/i;
 
+  async function clickDjinniButton(wanted) {
+    const norm = (s) => String(s || "").replace(/\s+/g, " ").trim().toLowerCase();
+    const matches = Array.from(document.querySelectorAll("button, a[role='button'], input[type='button'], input[type='submit']"))
+      .filter((b) => [b.textContent, b.getAttribute("aria-label"), b.value].some((s) => norm(s) === wanted));
+    const safe = matches.filter((b) => {
+      const labels = [b.textContent, b.getAttribute("aria-label"), b.value].map(norm);
+      // Only the opener OUTSIDE a form may be type=submit. Never permit a real submitter,
+      // even if its text has been changed to an allowed navigation label.
+      const submitter = b.id === "job_apply" || b.name === "job_apply" ||
+        (b.form && (b.type === "submit" || b.type === "image"));
+      return !submitter && !labels.some((l) => NAV_DENIED_RE.test(l)) &&
+        !hasHiddenAncestor(b) && window.getComputedStyle(b).visibility !== "hidden" &&
+        !b.disabled && b.getAttribute("aria-disabled") !== "true";
+    });
+    if (!safe.length) return {
+      success: false, denied: matches.some((b) => b.id === "job_apply" || b.name === "job_apply" ||
+        (b.form && (b.type === "submit" || b.type === "image")) ||
+        [b.textContent, b.getAttribute("aria-label"), b.value].some((s) => NAV_DENIED_RE.test(norm(s)))),
+      reason: matches.length ? "Matching button is hidden, disabled or looks like a final action; not clicked" : "Button not found"
+    };
+    const opener = wanted === DJINNI_NAV_ALLOWED[0];
+    if (!DJINNI_NAV_ALLOWED.includes(wanted)) {
+      dispatchUserClick(safe[0]);
+      return { success: true, clicked: true, label: wanted };
+    }
+    const ready = () => opener ? !getDjinniFormState().formClosed :
+      !!document.querySelector(DJ.salaryInput) && !hasHiddenAncestor(document.querySelector(DJ.salaryInput));
+    if (ready()) return { success: true, clicked: false, label: wanted, ...(opener ? { formClosed: false } : {}) };
+    dispatchUserClick(safe[0]);
+    // Page handlers can insert/reveal the inline form after async work or an animation.
+    // Poll fresh DOM state; never click twice or force hidden fields visible.
+    const deadline = Date.now() + 2000;
+    while (!ready() && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 50));
+    const formReady = ready();
+    return { success: formReady, clicked: true, label: wanted, formReady,
+      ...(opener ? { formClosed: !formReady } : {}),
+      ...(!formReady ? { reason: "Clicked, but fields are still hidden after waiting; re-read the form before filling" } : {}) };
+  }
+
   function clickButton(text) {
     const norm = (s) => String(s || "").replace(/\s+/g, " ").trim().toLowerCase();
     const wanted = norm(text);
@@ -2119,6 +2160,7 @@
 
     // Check Djinni-specific allowlist — only valid on a Djinni vacancy page
     const djinniAllowed = DJINNI_NAV_ALLOWED.includes(wanted) && isDjinniVacancyPage();
+    if (isDjinniVacancyPage() && (djinniAllowed || globalAllowed)) return clickDjinniButton(wanted);
 
     if (!globalAllowed && !djinniAllowed) {
       // "надіслати відгук" (final submit) hits NAV_DENIED_RE → report denied:true
@@ -2128,8 +2170,7 @@
       return { success: false, denied: true, reason: `"${text}" is not an allowed navigation label`, allowed: NAV_ALLOWED };
     }
 
-    // Djinni: the opener buttons sit OUTSIDE the (hidden) #apply_form that the generic scope would pick.
-    const scope = djinniAllowed ? document : (H.fhGetApplicationScope(document) || document);
+    const scope = H.fhGetApplicationScope(document) || document;
     const buttons = Array.from(scope.querySelectorAll("button, [role='button'], input[type='button'], input[type='submit'], a[role='button']"));
     const labelsOf = (b) => [b.innerText || b.textContent, b.getAttribute("aria-label"), b.value].map(norm).filter(Boolean);
     const visible = (b) => {
@@ -2232,8 +2273,8 @@
         break;
 
       case "CLICK_BUTTON":
-        sendResponse(clickButton(message.text));
-        break;
+        Promise.resolve(clickButton(message.text)).then(sendResponse).catch((e) => sendResponse({ success: false, reason: e.message }));
+        return true;
 
       case "UPDATE_PROFILE":
         activeProfileKey = message.activeProfileKey;

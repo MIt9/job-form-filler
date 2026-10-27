@@ -212,7 +212,7 @@ console.log("▶ Testing Djinni content-script integration against the real logg
   {
     const p = load(vacancyPage(), VACANCY_URL);
     let openerClicks = 0;
-    p.document.querySelectorAll(".js-inbox-toggle-reply-form").forEach((b) => b.addEventListener("click", (e) => { openerClicks++; e.preventDefault(); }));
+    p.document.querySelectorAll(".js-inbox-toggle-reply-form").forEach((b) => b.addEventListener("click", (e) => { openerClicks++; e.preventDefault(); openForm(p); }));
     const r = await p.send({ action: "CLICK_BUTTON", text: "Відгукнутися на вакансію" });
     assert.strictEqual(r.success, true, JSON.stringify(r));
     assert.strictEqual(openerClicks, 1);

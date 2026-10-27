@@ -87,6 +87,11 @@ console.log("▶ Testing Djinni wiring: bridge command -> background.js -> conte
 (async () => {
   // Real saved page: form exists in the DOM with style="display:none" until the opener is clicked.
   const page = loadContent(FIXTURE, URL_);
+  // Simulate the site's handler: reveal asynchronously as a consequence of the actual tool click.
+  page.w.document.querySelectorAll(".js-inbox-toggle-reply-form").forEach((button) => button.addEventListener("click", (e) => {
+    e.preventDefault();
+    page.w.setTimeout(() => { page.w.document.getElementById("apply_form").style.display = "block"; }, 25);
+  }));
   const call = await loadBackground(page, URL_);
 
   let form = await call("GET_ACTIVE_FORM");
@@ -97,13 +102,13 @@ console.log("▶ Testing Djinni wiring: bridge command -> background.js -> conte
 
   const click = await call("CLICK_BUTTON", { text: "Відгукнутися на вакансію" });
   assert.strictEqual(click.success, true, JSON.stringify(click));
+  assert.strictEqual(click.formClosed, false, "bridge waits for visible inline form");
   const denied = await call("CLICK_BUTTON", { text: "Надіслати відгук" });
   assert.strictEqual(denied.success, false);
   assert.strictEqual(denied.denied, true);
   console.log("✔ CLICK_BUTTON: opener allowed, 'Надіслати відгук' denied through background.js");
 
-  // Simulate the site's own JS revealing the form (the fixture has no page scripts).
-  page.w.document.getElementById("apply_form").style.display = "block";
+  // Re-read the DOM after the opener; no manual reveal after the tool response.
   form = await call("GET_ACTIVE_FORM");
   assert.strictEqual(form.formClosed, false, JSON.stringify(form));
   assert.ok(form.fields.find((f) => f.fieldId === "djinni_message"));

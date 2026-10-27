@@ -1,0 +1,32 @@
+<!-- Reconstruction of the user-described 2026-10-27 Ukrainian logged-in page.
+     Names/IDs are assumptions based on the existing Djinni fixture, not a live DOM capture. -->
+<main>
+  <h1>Principal Front-End Developer / Staff Engineer</h1>
+  <div style="display:none"><button type="button" class="js-inbox-toggle-reply-form">Відгукнутися на вакансію</button></div>
+  <button type="submit" class="js-inbox-toggle-reply-form" id="visible-opener">Відгукнутися на вакансію</button>
+  <div id="inline-slot"></div>
+</main>
+<aside><button type="button" class="js-inbox-toggle-reply-form">Відгукнутися на вакансію</button></aside>
+<template id="application-template">
+  <form id="apply_form">
+    <h2>Відгук на вакансію</h2>
+    <label for="leadership">Briefly describe your experience leading development teams. Please answer in your own words (no AI-generated responses)</label>
+    <textarea id="leadership" name="answer_101" required></textarea>
+    <label for="ai">Briefly describe your hands-on experience integrating AI capabilities into applications. Please answer in your own words (no AI-generated responses)</label>
+    <textarea id="ai" name="answer_102" required></textarea>
+    <label for="startup">Briefly describe your experience working in a startup environment. Please answer in your own words (no AI-generated responses)</label>
+    <textarea id="startup" name="answer_103" required></textarea>
+    <label for="start">What is your earliest available start date?</label>
+    <textarea id="start" name="answer_104" required></textarea>
+    <label for="message">Повідомлення</label>
+    <textarea id="message" name="message" placeholder="Розкажіть що зацікавило вас в цій вакансії і чому ви підійдете."></textarea>
+    <label><input type="checkbox" name="save_msg_template">Зберегти повідомлення як шаблон</label>
+    <label for="resume">Резюме</label>
+    <select id="resume" name="cv_file_upload_id"><option value="12345" selected>candidate.pdf</option><option value="">Не показувати резюме</option></select>
+    <button type="button">+ Додати резюме</button>
+    <label for="salary">Зарплатні очікування</label>
+    <input id="salary" name="salary_changed" type="number" value="5000">
+    <button type="button" class="js-salary-toggle-btn">Змінити для цієї вакансії</button>
+    <button type="submit" id="job_apply" name="job_apply">Надіслати відгук</button>
+  </form>
+</template>
