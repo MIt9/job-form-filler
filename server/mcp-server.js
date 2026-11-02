@@ -363,6 +363,9 @@ async function callTool(name, args = {}) {
         else if (/why (this|us|now)|tell us about|describe a/i.test(t)) q.kind = "motivational";
         else q.kind = "factual";
       });
+      form.needsHumanDecision = (form.questions || [])
+        .filter((q) => q.humanRequired || q.type === "consent" || q.kind === "motivational" || q.kind === "behavioral")
+        .map((q) => q.label);
       return form;
     }
     case "fill_job_form":

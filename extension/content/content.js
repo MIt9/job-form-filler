@@ -1113,6 +1113,7 @@
         id: el.id,
         placeholder: el.placeholder || "",
         required: el.required || el.getAttribute("aria-required") === "true",
+        defaultChecked: !!el.defaultChecked,
         maxLength: el.maxLength > 0 ? el.maxLength : undefined,
         minLength: el.minLength > 0 ? el.minLength : undefined,
         value: el.value || el.innerText || "",
@@ -2003,6 +2004,7 @@
         type: f.type,
         required: !!f.required,
         filled,
+        checkedByDefault: !!f.defaultChecked,
         value: cut(String(value || ""))
       });
     }
