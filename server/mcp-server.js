@@ -354,6 +354,12 @@ async function callTool(name, args = {}) {
       const form = await callBridge("GET_ACTIVE_FORM", { full: !!args.full, tabId: args.tabId });
       (form.questions || []).forEach((q) => {
         if (isHumanRequiredQuestion(q)) q.humanRequired = true;
+        const t = `${q.label || ""}`.toLowerCase();
+        if (q.humanRequired) q.kind = "behavioral";
+        else if (/gender|race|ethnicity|veteran|disability|eeo/i.test(t)) q.kind = "eeo";
+        else if (/authoriz|sponsor|visa|work permit/i.test(t)) q.kind = "authorization";
+        else if (/why (this|us|now)|tell us about|describe a/i.test(t)) q.kind = "motivational";
+        else q.kind = "factual";
       });
       return form;
     }
