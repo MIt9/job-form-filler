@@ -41,16 +41,31 @@
     return (h >>> 0).toString(16);
   }
 
+  function parseCharLimit(txt) {
+    let m = txt.match(/(?:^|\D)(\d+)\s*\/\s*(\d{2,})(?!\d)/);
+    if (m) return parseInt(m[2], 10);
+    m = txt.match(/max(?:imum)?\s*(\d{2,})\s*char/i);
+    if (m) return parseInt(m[1], 10);
+    m = txt.match(/(\d{2,})\s*char(?:acters)?\s*(?:max|maximum|left)/i);
+    if (m) return parseInt(m[1], 10);
+    return undefined;
+  }
+
+  // Counter text next to the field ("0/1000", "Max 500 characters"). Never reads an ancestor that holds
+  // other fields: its counters belong to those fields.
   function findCharLimit(el) {
-    let node = el;
-    for (let i = 0; i < 4 && node; i++) {
-      const txt = (node.textContent || "");
-      let m = txt.match(/\b(\d+)\s*\/\s*(\d{2,})\b/);
-      if (m) return parseInt(m[2], 10);
-      m = txt.match(/max(?:imum)?\s*(\d{2,})\s*char/i);
-      if (m) return parseInt(m[1], 10);
-      m = txt.match(/(\d{2,})\s*char(?:acters)?\s*(?:max|maximum|left)/i);
-      if (m) return parseInt(m[1], 10);
+    for (const sib of [el.nextElementSibling, el.previousElementSibling]) {
+      const txt = sib && !sib.querySelector?.("input,textarea,select") ? sib.textContent || "" : "";
+      if (txt.length < 100) {
+        const n = parseCharLimit(txt);
+        if (n) return n;
+      }
+    }
+    let node = el.parentElement;
+    for (let i = 0; i < 3 && node; i++) {
+      if (node.querySelectorAll("input,textarea,select").length > 1) break;
+      const n = parseCharLimit(node.textContent || "");
+      if (n) return n;
       node = node.parentElement;
     }
     return undefined;
@@ -183,7 +198,6 @@
     el.dispatchEvent(new MouseEvent("click", opts));
   }
 
-  // Helper: Select option in Material-UI / custom Combobox & Autocomplete dropdowns
   // Helper: Select option in Material-UI / custom Combobox & Autocomplete dropdowns
   // ITEM A FIX: Snapshot neighboring fields to detect/prevent text corruption
   // ITEM B FIX: Timeout protection and cap iterations on huge lists (3000+ cities)
@@ -1211,6 +1225,13 @@
         }
         fields.push(toggleField);
       }
+    });
+
+    // Same label + same DOM path (sibling inputs) hash alike: number repeats by order of appearance.
+    const seenIds = {};
+    fields.forEach((f) => {
+      seenIds[f.fieldId] = (seenIds[f.fieldId] || 0) + 1;
+      if (seenIds[f.fieldId] > 1) f.fieldId += `_${seenIds[f.fieldId]}`;
     });
 
     return fields;
