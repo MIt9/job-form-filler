@@ -12,6 +12,7 @@ const BRIDGE_HTTP_URL = "http://127.0.0.1:8765/api";
 let ws = null;
 let isConnected = false;
 let isConnecting = false;
+let lastOpenedTabId = null;
 
 function isValidHttpUrl(urlString) {
   if (!urlString || typeof urlString !== "string") return false;
@@ -276,14 +277,27 @@ async function broadcastToAllFrames(tab, message) {
 async function handleBridgeMessage(message) {
   const { command, requestId, payload } = message;
 
-  // Target the active tab of the OS-focused window. OPEN_JOB_URL / FOCUS_TAB focus their
-  // window, so later commands land on that tab without any sticky tab id.
-  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-  const activeTab = tab || (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+  const p = message.payload || {};
+  // Resolve target tab: explicit tabId wins; otherwise fall back to the OS-active tab.
+  let activeTab = null;
+  if (p.tabId != null) {
+    try { activeTab = await chrome.tabs.get(Number(payload.tabId)); } catch (e) { activeTab = null; }
+  }
+  if (!activeTab) {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    activeTab = tab || (await chrome.tabs.query({ active: true, currentWindow: true }))[0] || null;
+  }
 
   // Profile and tab navigation commands don't need a pre-existing active tab.
-  if (!activeTab?.id && !["GET_PROFILE", "SET_PROFILE", "OPEN_JOB_URL", "FOCUS_TAB"].includes(command)) {
-    sendBridgeResponse(requestId, { error: "No active tab found in Chrome" });
+  if (!activeTab?.id && !["GET_PROFILE", "SET_PROFILE", "OPEN_JOB_URL", "FOCUS_TAB", "CHECK_ACCESS"].includes(command)) {
+    let hint = "No active tab found in Chrome";
+    try {
+      const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      const t = tabs && tabs[0];
+      if (t) hint = `No usable active tab. Active tab: id=${t.id} url=${t.url || "?"}.`;
+    } catch (e) {}
+    if (lastOpenedTabId != null) hint += ` Last tab opened via open_job_url: ${lastOpenedTabId}. Pass tabId to target it.`;
+    sendBridgeResponse(requestId, { error: hint });
     return;
   }
 
@@ -306,6 +320,7 @@ async function handleBridgeMessage(message) {
       }
 
       await waitForTabComplete(tab.id, 15000);
+      lastOpenedTabId = tab.id;
 
       let finalUrl = tab.url || cleanUrl;
       try {
@@ -477,6 +492,7 @@ async function handleBridgeMessage(message) {
         data: {
           aiFilledCount: filled.length,
           failed: results.flatMap((r) => r.failed || []),
+          applied: results.flatMap((r) => r.applied || []),
           // A key missing from every frame was never matched to a field.
           notFound: Object.keys(payload.answers || {}).filter(
             (ref) => !filled.includes(ref) && results.every((r) => (r.notFound || []).includes(ref))

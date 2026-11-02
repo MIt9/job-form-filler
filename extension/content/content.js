@@ -665,6 +665,7 @@
     const filled = [];
     const notFound = [];
     const failed = [];
+    const applied = [];
 
     for (const [key, value] of Object.entries(answers || {})) {
       if (value === undefined || value === null) continue;
@@ -676,6 +677,7 @@
         try {
           replaceFieldValue(ta, String(value));
           filled.push(key);
+          applied.push({ fieldId: "djinni_message", label: "Повідомлення", writtenValue: String(value), readBackValue: String(ta.value || "") });
         } catch (e) { failed.push(key); }
         continue;
       }
@@ -739,7 +741,7 @@
       notFound.push(key);
     }
 
-    return { filled, notFound, failed };
+    return { filled, notFound, failed, applied };
   }
 
   // Helper to check if text is a generic non-question placeholder
@@ -1919,6 +1921,7 @@
     const filled = [];
     const notFound = [];
     const failed = [];
+    const applied = [];
 
     for (const [ref, answer] of Object.entries(answers)) {
       if (answer === undefined || answer === null) continue;
@@ -1937,13 +1940,16 @@
         notFound.push(ref);
         continue;
       }
-      if (await fillField(field, answer)) filled.push(ref);
+      if (await fillField(field, answer)) {
+        filled.push(ref);
+        applied.push({ fieldId: field.fieldId, label: field.label, writtenValue: String(answer), readBackValue: currentValue(field) });
+      }
       else failed.push(ref);
       await sleep(35 + Math.random() * 35);
     }
 
     // Each frame only sees its own fields, so notFound is per-frame; the caller merges frames.
-    return { success: true, aiFilledCount: filled.length, filled, failed, notFound };
+    return { success: true, aiFilledCount: filled.length, filled, failed, notFound, applied };
   }
 
   // Current human-readable value of a scanned field ("" when empty or not representable).

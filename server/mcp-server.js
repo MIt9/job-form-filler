@@ -137,7 +137,8 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        profileKey: { type: "string", description: "Optional role variant id (see get_candidate_profile.availableVariants)" }
+        profileKey: { type: "string", description: "Optional role variant id (see get_candidate_profile.availableVariants)" },
+        tabId: { type: "number", description: "Optional Chrome tab id to target (from open_job_url); defaults to active tab" }
       }
     }
   },
@@ -147,7 +148,8 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        full: { type: "boolean", description: "If true, return full jobDescription (up to 30000 chars); otherwise trim to 3000." }
+        full: { type: "boolean", description: "If true, return full jobDescription (up to 30000 chars); otherwise trim to 3000." },
+        tabId: { type: "number", description: "Optional Chrome tab id to target (from open_job_url); defaults to active tab" }
       }
     }
   },
@@ -161,7 +163,8 @@ const TOOLS = [
           type: "object",
           description: "Map of fieldId to answer text",
           additionalProperties: { type: "string" }
-        }
+        },
+        tabId: { type: "number", description: "Optional Chrome tab id to target (from open_job_url); defaults to active tab" }
       },
       required: ["answers"]
     }
@@ -233,7 +236,8 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        text: { type: "string", description: "Exact navigation label to click (e.g. \"Continue\", \"Next\", \"Apply Now\", \"Продовжити\")" }
+        text: { type: "string", description: "Exact navigation label to click (e.g. \"Continue\", \"Next\", \"Apply Now\", \"Продовжити\")" },
+        tabId: { type: "number", description: "Optional Chrome tab id to target (from open_job_url); defaults to active tab" }
       },
       required: ["text"]
     }
@@ -241,7 +245,7 @@ const TOOLS = [
   {
     name: "get_submission_status",
     description: "After the user clicks Submit: checks the URL (/confirm, /applied, /thank-you, /connect/dashboard ...) and the page text/banner for a confirmation. Returns {isSubmitted, matchedBy: \"url\"|\"text\"|null, headline, url, headings} without rescanning the form.",
-    inputSchema: { type: "object", properties: {} }
+    inputSchema: { type: "object", properties: { tabId: { type: "number", description: "Optional Chrome tab id to target (from open_job_url); defaults to active tab" } } }
   },
   {
     name: "get_form_state",
@@ -250,7 +254,8 @@ const TOOLS = [
       type: "object",
       properties: {
         maxValueLength: { type: "number", description: "Max characters per value (default 120)" },
-        includeEmpty: { type: "boolean", description: "Include empty fields (default true)" }
+        includeEmpty: { type: "boolean", description: "Include empty fields (default true)" },
+        tabId: { type: "number", description: "Optional Chrome tab id to target (from open_job_url); defaults to active tab" }
       }
     }
   }
@@ -299,7 +304,7 @@ async function callTool(name, args = {}) {
       return getJobPosting(args.url, { summary: !!args.summary });
     }
     case "autofill_static_fields": {
-      const result = await callBridge("AUTOFILL_STATIC", { profileKey: args.profileKey });
+      const result = await callBridge("AUTOFILL_STATIC", { profileKey: args.profileKey, tabId: args.tabId });
       if (result?.failed?.some((f) => f.key === "resumeFile")) {
         result.hint =
           "The resume was not attached. Tell the user to upload it once in the extension popup (Profile tab, PDF/DOCX up to 5 MB); " +
@@ -308,25 +313,25 @@ async function callTool(name, args = {}) {
       return result;
     }
     case "get_active_job_form": {
-      const form = await callBridge("GET_ACTIVE_FORM", { full: !!args.full });
+      const form = await callBridge("GET_ACTIVE_FORM", { full: !!args.full, tabId: args.tabId });
       (form.questions || []).forEach((q) => {
         if (isHumanRequiredQuestion(q)) q.humanRequired = true;
       });
       return form;
     }
     case "fill_job_form":
-      return callBridge("FILL_FORM", { answers: args.answers });
+      return callBridge("FILL_FORM", { answers: args.answers, tabId: args.tabId });
     case "get_form_state":
-      return callBridge("GET_FORM_STATE", { maxValueLength: args.maxValueLength || 120, includeEmpty: args.includeEmpty !== false });
+      return callBridge("GET_FORM_STATE", { maxValueLength: args.maxValueLength || 120, includeEmpty: args.includeEmpty !== false, tabId: args.tabId });
     case "click_button": {
       if (!args.text || typeof args.text !== "string") {
         throw new Error("text parameter is required");
       }
-      return callBridge("CLICK_BUTTON", { text: args.text });
+      return callBridge("CLICK_BUTTON", { text: args.text, tabId: args.tabId });
     }
 
     case "get_submission_status":
-      return callBridge("GET_SUBMISSION_STATUS");
+      return callBridge("GET_SUBMISSION_STATUS", { tabId: args.tabId });
     case "update_candidate_profile":
       return callBridge("SET_PROFILE", { patch: args.patch, overwrite: !!args.overwrite });
     case "get_candidate_profile":
