@@ -136,6 +136,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         chrome.storage.local.set({ learnedAnswers });
         renderLearnedAnswers();
         broadcastLearnedAnswers();
+        if (isBridgeConnected) {
+          fetch("http://127.0.0.1:8765/api/learned-answers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ answers: learnedAnswers })
+          }).catch(() => {});
+        }
       });
     });
   }
@@ -659,7 +666,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const profileTitle = candidate?.profiles?.[profileKey]?.title || profileKey;
     const profileSummary = candidate?.profiles?.[profileKey]?.summary || "";
 
-    const questionsList = (job.questions || [])
+    const allQuestions = [...(job.fields || []), ...(job.questions || [])];
+    const questionsList = allQuestions
       .map((q, idx) => `${idx + 1}. [${q.fieldId}] "${q.label}" (Type: ${q.type}${q.required ? ', Required' : ''})${q.options?.length ? ` Options: ${q.options.join(" / ")}` : ""}`)
       .join("\n");
 
@@ -681,7 +689,7 @@ Answer language: ${job.language || "en"} (write every answer in this language).
 Output Format: Return strictly a valid JSON object where keys are the [fieldId] and values are the answer text. Never invent facts not grounded in the candidate's profile.
 Example:
 {
-  "${job.questions?.[0]?.fieldId || 'field_1'}": "Answer text..."
+  "${allQuestions?.[0]?.fieldId || 'field_1'}": "Answer text..."
 }`;
   }
 

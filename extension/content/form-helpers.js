@@ -140,6 +140,7 @@ const api = {
   fhClassifyFileInput,
   fhIsNoise,
   fhIsLoginForm,
+  fhIsRendered,
   fhGetApplicationScope,
   fhSubmissionByUrl
 };

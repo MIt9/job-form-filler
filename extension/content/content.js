@@ -18,7 +18,8 @@
       fhGetApplicationScope: () => null,
       fhClassifyFileInput: () => ({ passed: false, weak: true, reason: "helpers unavailable" }),
       fhSubmissionByUrl: () => false,
-      fhPickLabel: () => null
+      fhPickLabel: () => null,
+       fhIsRendered: () => true
     };
 
   // State
@@ -987,6 +988,8 @@
       if (["submit", "button", "reset", "image"].includes(type) && !isCombobox) return;
       if (type === "hidden" && !isCombobox) return;
 
+      if (type !== "file" && !isCombobox && H.fhIsRendered && !H.fhIsRendered(el)) return;
+
       const style = window.getComputedStyle(el);
       // ATS platforms (Ashby, Greenhouse, Lever) frequently hide raw <input type="file"> behind drag-and-drop buttons
       if (style.display === "none" && type !== "file" && !isCombobox) return;
@@ -1539,7 +1542,7 @@
         );
         const nationalPlaceholder = /\d/.test(el.placeholder || "") && !(el.placeholder || "").includes("+");
         if (dial && (hasDialCodeField || nearDialControl || nationalPlaceholder)) {
-          return phone.replace(dial, "").replace(dial.slice(1), "").trim().replace(/^0/, "");
+          return phone.replace(new RegExp("^\\+?" + dial.replace(/^\+/, "") + "[\\s-]*"), "").trim().replace(/^0/, "");
         }
         return phone;
       }
@@ -1579,7 +1582,7 @@
     if (field.type === "toggle-checkbox-pair") return false;
     if (el.type === "checkbox") return el.checked;
     if (el.type === "file") return !!el.files?.length;
-    if (el.tagName === "SELECT") return !!el.value && el.selectedIndex > 0;
+    if (el.tagName === "SELECT") return !!String(el.value ?? "").trim();
     return !!String(el.value ?? "").trim();
   }
 

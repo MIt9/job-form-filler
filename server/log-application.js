@@ -52,16 +52,22 @@ function profileDir(profile) {
   return null;
 }
 
-// Resume markdown inside a role folder: first `resume*.md` (e.g. resume-jane-doe.md).
+// Resume markdown inside a role folder: prefer resume*/cv* names, else any .md (matches profile loader).
 function resumeMdName(dir) {
-  return fs.readdirSync(dir).filter((n) => /^resume.*\.md$/i.test(n)).sort()[0] || null;
+  const mdFiles = fs.readdirSync(dir).filter((n) => /\.md$/i.test(n)).sort();
+  return mdFiles.find((n) => /^(resume|cv)/i.test(n)) || mdFiles[0] || null;
 }
 
+function hasProfileFiles(dir) {
+  if (!isDir(dir)) return false;
+  const files = fs.readdirSync(dir);
+  return files.some((n) => /\.md$/i.test(n)) || files.some((n) => /\.pdf$/i.test(n));
+}
 function validateProfile(profile) {
   if (profileDir(profile)) return;
   const [root] = profileRoots();
   const valid = fs.readdirSync(root)
-    .filter((p) => isDir(path.join(root, p)) && resumeMdName(path.join(root, p)));
+    .filter((p) => isDir(path.join(root, p)) && hasProfileFiles(path.join(root, p)));
   throw new Error(`Profile '${profile}' does not exist. Valid profiles: ${valid.join(', ')}`);
 }
 
@@ -88,7 +94,7 @@ function checkAlreadyLogged(company, date, url, role) {
   if (!fs.existsSync(logPath)) return false;
   const content = fs.readFileSync(logPath, 'utf8');
 
-  if (url && content.includes(url)) return true;
+  if (url && new RegExp(escapeRegExp(url) + "(?![0-9])").test(content)) return true;
   // Submitted rows do not carry the URL: identify them by the exact "| date | company | role |" prefix.
   if (role && new RegExp(`^\\| ${escapeRegExp(date)} \\| ${escapeRegExp(company)} \\| ${escapeRegExp(role)} \\|`, "m").test(content)) return true;
   if (url) return false;
@@ -120,7 +126,8 @@ function insertSkippedBlock(content, company, date, role, profile, url, reason) 
       introEnd = i;
       break;
     }
-    if (lines[i].startsWith('|') && lines[i].includes('---')) {
+    // Stop at the first table row (header), not at its separator, so the table stays intact.
+    if (lines[i].trim().startsWith('|') && !lines[i].includes('---')) {
       introEnd = i;
       break;
     }
@@ -294,8 +301,9 @@ async function logApplication(input) {
   const resumeRepoPath = getResumeRepoPath();
   const slug = toSlug(company);
   const logPath = path.join(resumeRepoPath, 'info/applications-log.md');
+   if (!fs.existsSync(path.dirname(logPath))) fs.mkdirSync(path.dirname(logPath), { recursive: true });
   const pDir = profileDir(profile);
-  const profileResumePath = path.join(pDir, resumeMdName(pDir) || 'resume.md');
+   const profileResumePath = resumeMdName(pDir) ? path.join(pDir, resumeMdName(pDir)) : null;
   const applicationFolderPath = path.join(pDir, 'applications', slug);
   const relFolder = path.relative(resumeRepoPath, applicationFolderPath).split(path.sep).join('/') + '/';
   const jobPostingPath = path.join(applicationFolderPath, 'job-posting.md');
@@ -335,14 +343,20 @@ async function logApplication(input) {
       fs.writeFileSync(logPath, newContent, 'utf8');
     }
 
-    // Update profile resume
-    let resumeContent = fs.readFileSync(profileResumePath, 'utf8');
-    const newResumeContent = insertApplicationsBullet(resumeContent, company, role, slug);
-    const bullet = `- **${company}** — ${role} — see \`applications/${slug}/\``;
-    changes.profileResume = `${profileResumePath}:${bullet}`;
+    // Update profile resume (only when a markdown resume exists; PDF-only profiles have none)
+    const resumeName = resumeMdName(pDir);
+    if (resumeName) {
+      const resumePath = path.join(pDir, resumeName);
+      let resumeContent = fs.readFileSync(resumePath, 'utf8');
+      const newResumeContent = insertApplicationsBullet(resumeContent, company, role, slug);
+      const bullet = `- **${company}** — ${role} — see \`applications/${slug}/\``;
+      changes.profileResume = `${resumePath}:${bullet}`;
 
-    if (!dryRun) {
-      fs.writeFileSync(profileResumePath, newResumeContent, 'utf8');
+      if (!dryRun) {
+        fs.writeFileSync(resumePath, newResumeContent, 'utf8');
+      }
+    } else {
+      changes.profileResume = null;
     }
 
     // Create job-posting.md if missing
