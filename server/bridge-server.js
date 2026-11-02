@@ -81,6 +81,13 @@ function startBridgeServer() {
 
     // Health check
     if (url.pathname === "/api/status" && req.method === "GET") {
+      let grantedHosts = [];
+      if (activeWsClient && activeWsClient.readyState === 1) {
+        try {
+          const r = await sendToExtension("GET_GRANTED_HOSTS", {}, 5000);
+          grantedHosts = r?.origins || r?.data?.origins || [];
+        } catch (e) {}
+      }
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(
         JSON.stringify({
@@ -88,6 +95,7 @@ function startBridgeServer() {
           version: require("../package.json").version,
           resumeRepoPath: DEFAULT_RESUME_REPO_PATH,
           extensionConnected: !!(activeWsClient && activeWsClient.readyState === 1),
+          grantedHosts,
           timestamp: new Date().toISOString()
         })
       );

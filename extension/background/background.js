@@ -453,6 +453,14 @@ async function handleBridgeMessage(message) {
       await chrome.storage.local.set({ resumeFile: { base64, fileName, mimeType } });
       sendBridgeResponse(requestId, { success: true, data: { attached: true, fileName } });
       return;
+    } else if (command === "GET_GRANTED_HOSTS") {
+      try {
+        const perms = await chrome.permissions.getAll();
+        sendBridgeResponse(requestId, { success: true, data: { origins: perms.origins || [] } });
+      } catch (e) {
+        sendBridgeResponse(requestId, { success: true, data: { origins: [] } });
+      }
+      return;
     } else if (command === "GET_PROFILE") {
       // Profile lives in the extension (edited in the popup); MCP reads it from here.
       const res = await chrome.storage.local.get(["candidateData", "activeProfileKey", "resumeFile"]);
@@ -491,7 +499,12 @@ async function handleBridgeMessage(message) {
       const result = results.find((r) => r && r.success) ||
         results.find((r) => r && r.denied && /looks like a final/.test(r.reason || "")) ||
         results[0] || { success: false, reason: "No response from content script" };
-      sendBridgeResponse(requestId, { success: true, data: result });
+      let formState = null;
+      try {
+        const fsr = await broadcastToAllFrames(activeTab, { action: "GET_FORM_STATE", maxValueLength: 120, includeEmpty: true });
+        formState = fsr.flatMap((r) => r.fields || []);
+      } catch (e) {}
+      sendBridgeResponse(requestId, { success: true, data: { ...result, formState } });
 
     } else if (command === "GET_SUBMISSION_STATUS") {
       const results = await broadcastToAllFrames(activeTab, { action: "GET_SUBMISSION_STATUS", tabUrl: activeTab.url || "" });

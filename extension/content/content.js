@@ -341,6 +341,7 @@
       element.dispatchEvent(new Event("change", { bubbles: true }));
     }
     element.setAttribute("data-autofill-highlight", "1");
+    element.setAttribute("data-jff-checked-by-tool", "1");
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -2005,6 +2006,7 @@
         required: !!f.required,
         filled,
         checkedByDefault: !!f.defaultChecked,
+        checkedByTool: !!f.element?.getAttribute?.("data-jff-checked-by-tool"),
         value: cut(String(value || ""))
       });
     }
