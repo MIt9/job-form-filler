@@ -599,6 +599,7 @@
         type: "textarea",
         required: true,
         minLength: 50,
+        maxLength: messageTextarea.maxLength > 0 ? messageTextarea.maxLength : undefined,
         placeholder: messageTextarea.placeholder || "",
         value: messageTextarea.value || ""
       }
@@ -1112,6 +1113,8 @@
         id: el.id,
         placeholder: el.placeholder || "",
         required: el.required || el.getAttribute("aria-required") === "true",
+        maxLength: el.maxLength > 0 ? el.maxLength : undefined,
+        minLength: el.minLength > 0 ? el.minLength : undefined,
         value: el.value || el.innerText || "",
         options: options,
         fullIdentifier: fullIdentifier,
@@ -1922,6 +1925,7 @@
     const notFound = [];
     const failed = [];
     const applied = [];
+    const didYouMean = {};
 
     for (const [ref, answer] of Object.entries(answers)) {
       if (answer === undefined || answer === null) continue;
@@ -1936,8 +1940,21 @@
         } catch (e) {}
         if (el) field = { element: el, type: el.type, label: ref, classification: {} };
       }
+      if (field && field.maxLength && String(answer).length > field.maxLength) {
+        failed.push(`${ref} (text ${String(answer).length} chars exceeds maxLength ${field.maxLength})`);
+        continue;
+      }
       if (!field) {
         notFound.push(ref);
+        const refNorm = normalizeQuestion(ref);
+        const candidates = fields
+          .map((f) => f.label)
+          .filter((l) => l)
+          .map((l) => ({ l, score: normalizeQuestion(l).includes(refNorm) || refNorm.includes(normalizeQuestion(l)) ? 2 : 0 }))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 3)
+          .map((x) => x.l);
+        if (candidates.length) didYouMean[ref] = candidates;
         continue;
       }
       if (await fillField(field, answer)) {
@@ -1949,7 +1966,7 @@
     }
 
     // Each frame only sees its own fields, so notFound is per-frame; the caller merges frames.
-    return { success: true, aiFilledCount: filled.length, filled, failed, notFound, applied };
+    return { success: true, aiFilledCount: filled.length, filled, failed, notFound, applied, didYouMean };
   }
 
   // Current human-readable value of a scanned field ("" when empty or not representable).

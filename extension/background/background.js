@@ -336,6 +336,16 @@ async function handleBridgeMessage(message) {
           url: finalUrl
         }
       });
+    } else if (command === "CHECK_ACCESS") {
+      const { url } = payload || {};
+      let host = "";
+      try { host = new URL(url).host; } catch (e) { host = String(url || ""); }
+      let hasAccess = false;
+      try {
+        hasAccess = await chrome.permissions.contains({ origins: [`${new URL(url).origin}/*`] });
+      } catch (e) { hasAccess = false; }
+      sendBridgeResponse(requestId, { success: true, data: { hasAccess, host, url } });
+      return;
     } else if (command === "FOCUS_TAB") {
       const { tabId, urlSubstring } = payload || {};
       if (tabId == null && !urlSubstring) {
@@ -434,9 +444,15 @@ async function handleBridgeMessage(message) {
           filled: pick("filled"),
           missingProfile: pick("missingProfile"),
           failed: pick("failed"),
-          refilled: pick("refilled")
+          refilled: pick("refilled"),
+          resume: (await chrome.storage.local.get("resumeFile")).resumeFile?.base64 ? "attached" : "failed(no resume uploaded)"
         }
       });
+    } else if (command === "ATTACH_RESUME") {
+      const { base64, fileName, mimeType } = payload || {};
+      await chrome.storage.local.set({ resumeFile: { base64, fileName, mimeType } });
+      sendBridgeResponse(requestId, { success: true, data: { attached: true, fileName } });
+      return;
     } else if (command === "GET_PROFILE") {
       // Profile lives in the extension (edited in the popup); MCP reads it from here.
       const res = await chrome.storage.local.get(["candidateData", "activeProfileKey", "resumeFile"]);
@@ -493,6 +509,7 @@ async function handleBridgeMessage(message) {
           aiFilledCount: filled.length,
           failed: results.flatMap((r) => r.failed || []),
           applied: results.flatMap((r) => r.applied || []),
+          didYouMean: Object.assign({}, ...results.map((r) => r.didYouMean || {})),
           // A key missing from every frame was never matched to a field.
           notFound: Object.keys(payload.answers || {}).filter(
             (ref) => !filled.includes(ref) && results.every((r) => (r.notFound || []).includes(ref))

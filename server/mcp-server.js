@@ -12,6 +12,7 @@ const { getJobPosting } = require("./job-posting.js");
 const { startBridgeServer } = require("./bridge-server.js");
 const { logApplication } = require("./log-application.js");
 const { PROFILE_FIELDS } = require("../extension/shared/default-profile.js");
+const fs = require("fs");
 
 const PROFILE_PATHS = PROFILE_FIELDS.filter((f) => f.path).map((f) => f.path);
 
@@ -109,6 +110,17 @@ const TOOLS = [
     }
   },
   {
+    name: "check_access",
+    description: "Checks whether the extension currently has host permission for a URL (before opening a tab). Returns {hasAccess, host}.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        url: { type: "string", description: "URL to check host permission for" }
+      },
+      required: ["url"]
+    }
+  },
+  {
     name: "focus_tab",
     description: "Finds an existing tab in Chrome by tabId or URL substring match, activates it, and focuses its window. Returns {tabId, windowId, url, title}.",
     inputSchema: {
@@ -167,6 +179,17 @@ const TOOLS = [
         tabId: { type: "number", description: "Optional Chrome tab id to target (from open_job_url); defaults to active tab" }
       },
       required: ["answers"]
+    }
+  },
+  {
+    name: "attach_resume",
+    description: "Stores a resume file (PDF/DOCX) in the extension so autofill can attach it. Pass a local file path; the server reads it and sends bytes to the extension.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Absolute path to a PDF/DOCX resume file" }
+      },
+      required: ["path"]
     }
   },
   {
@@ -277,6 +300,10 @@ async function getCandidateProfile(profileKey) {
 
 async function callTool(name, args = {}) {
   switch (name) {
+    case "check_access": {
+      if (!args.url || typeof args.url !== "string") throw new Error("url parameter is required");
+      return callBridge("CHECK_ACCESS", { url: args.url.trim() });
+    }
     case "open_job_url": {
       if (!args.url || typeof args.url !== "string") {
         throw new Error("url parameter is required");
@@ -334,6 +361,13 @@ async function callTool(name, args = {}) {
       return callBridge("GET_SUBMISSION_STATUS", { tabId: args.tabId });
     case "update_candidate_profile":
       return callBridge("SET_PROFILE", { patch: args.patch, overwrite: !!args.overwrite });
+    case "attach_resume": {
+      if (!args.path || typeof args.path !== "string") throw new Error("path parameter is required");
+      const buf = fs.readFileSync(args.path);
+      const base64 = buf.toString("base64");
+      const fileName = require("path").basename(args.path);
+      return callBridge("ATTACH_RESUME", { base64, fileName, mimeType: fileName.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/octet-stream" });
+    }
     case "get_candidate_profile":
       return getCandidateProfile(args.profileKey);
     case "save_job_application":
