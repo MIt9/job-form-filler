@@ -289,6 +289,7 @@ const TOOLS = [
       properties: {
         maxValueLength: { type: "number", description: "Max characters per value (default 120)" },
         includeEmpty: { type: "boolean", description: "Include empty fields (default true)" },
+        full: { type: "boolean", description: "If true, return full values (maxValueLength 30000)" },
         tabId: { type: "number", description: "Optional Chrome tab id to target (from open_job_url); defaults to active tab" }
       }
     }
@@ -367,7 +368,7 @@ async function callTool(name, args = {}) {
     case "fill_job_form":
       return callBridge("FILL_FORM", { answers: args.answers, tabId: args.tabId, dryRun: !!args.dryRun });
     case "get_form_state":
-      return callBridge("GET_FORM_STATE", { maxValueLength: args.maxValueLength || 120, includeEmpty: args.includeEmpty !== false, tabId: args.tabId });
+      return callBridge("GET_FORM_STATE", { maxValueLength: args.full ? 30000 : (args.maxValueLength || 120), includeEmpty: args.includeEmpty !== false, tabId: args.tabId });
     case "click_button": {
       if (!args.text || typeof args.text !== "string") {
         throw new Error("text parameter is required");
