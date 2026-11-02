@@ -1,54 +1,51 @@
-# Задача: закрити прогалини з IMPROVEMENTS-2026-11.md
+# Задача (раунд 2): тести і прогалини з IMPROVEMENTS-2026-11.md
 
 Репо: `/Users/d.bilukcha/work/job-form-filler` (Chrome-розширення + Node bridge/MCP). Спочатку прочитай `CLAUDE.md` та `IMPROVEMENTS-2026-11.md`.
 
+## Стан після коміту `3f070fd`
+Код уже є, але **без нових тестів**:
+- `classifyQuestionKind` у `server/human-questions.js`; `humanRequired = kind !== "factual"` (Djinni і загальні питання).
+- `getSubmissionStatus` (`extension/content/content.js`): DOU (`?sent`, `#replied-`) і Greenhouse (`/confirmation`).
+- Стабільні `fieldId` через `stableFieldHash(label + '|' + stableDomPath(el))` (`field_`, `checkbox_group_`, `radio_group_`, `toggle_pair_`).
+- `server/bridge-server.js`: вивід `lsof` при зайнятому порті.
+- `autofill_static_fields` повертає `resume: "attached" | {failed: reason}`.
+
 ## Правила
 - Перед роботою і після неї запускай `npm test`. Усі тести мають проходити.
-- Для кожної нової логіки додай тест у `test/` і зареєструй його в `package.json` у скрипті `test`.
+- Кожен новий тест-файл реєструй у `package.json` у скрипті `test`.
 - Не додавай тул `submit`. Не послабляй `isTrustedRequest` у мості: ніякого `CORS *` і біндингу на `0.0.0.0`.
 - Мінімальний diff. Без нових залежностей.
-- Роби по одному пункту й ставай на зелених тестах. Коміти: `feat: ...`, англійською.
+- Один пункт — один коміт, англійською, `feat:` або `test:`. Не додавай цей файл у коміти.
 
-## Пункти (від найважливішого)
+## Пункти (по порядку)
 
-### 1. #8 — `kind: factual` для питань роботодавця
-- Зараз питання Djinni (`extension/content/content.js` ~L543-560, `getDjinniQuizQuestions`) усі мають `humanRequired: true, knockout: true`, навіть фактичні (роки досвіду, PHP, REST, fintech).
-- Значення `factual` у коді немає. `kind` ставить лише `server/mcp-server.js` ~L360-363, за ключовими словами.
-- Зроби так:
-  - Класифікація `kind` у одному місці, через яке проходять і Djinni, і загальні питання.
-  - `factual` означає, що відповідь береться з профілю або резюме: роки, стек, так/ні по навичках. Для `factual` не ставити `humanRequired`.
-  - `behavioral`, `motivational`, `eeo` та `authorization` лишаються людині.
-  - `knockout` залишається як є.
-- Задокументуй значення `kind` в описі тулу `get_active_job_form` у `server/mcp-server.js`.
-- Тест: питання «Скільки років досвіду з PHP?» дає `factual` без `humanRequired`, а «Розкажіть про випадок, коли ви помилились» дає `behavioral` з `humanRequired`.
+### A. Тести для вже зробленого (код не змінювати, лише якщо тест виявив баг)
+1. **`kind`.** «Скільки років досвіду з PHP?» дає `factual`, `humanRequired` не ставиться. «Розкажіть про випадок, коли ви помилились» дає `behavioral` і `humanRequired: true`. Додай ще по одному прикладу для `motivational`, `authorization` та `eeo`. Перевір, що Djinni-питання про роки досвіду більше не `humanRequired`, а `knockout` лишається.
+2. **`getSubmissionStatus`.** URL-кейси:
+   - `https://jobs.dou.ua/...?sent` і `...#replied-123` дають `isSubmitted: true, matchedBy: "url"`.
+   - `https://boards.greenhouse.io/x/jobs/1/confirmation` теж дає `isSubmitted: true`.
+   - `https://jobs.dou.ua/...` без `?sent` і не-DOU URL з `?sent` дають `isSubmitted: false`.
+3. **Стабільні `fieldId`.** Два послідовні скани тієї самої форми дають однакові id. Видали перше поле з DOM, і id решти не змінились. Два поля з однаковим label мають різні id.
+4. **Autofill і резюме.** `resume: "attached"` при успіху, `{failed: ...}` при невдачі. Перевір, що `bridge-server` при зайнятому порті не падає, навіть коли `lsof` недоступний.
 
-### 2. #10 — `get_submission_status` для DOU і Greenhouse
-- Файл: `extension/content/content.js` ~L2070 (`getSubmissionStatus`).
-- Додай URL-патерни: `?sent` і `#replied-` для `jobs.dou.ua`, `/confirmation` для Greenhouse. Результат: `isSubmitted: true, matchedBy: "url"`.
-- Тест на ці URL.
-- Подію `form-submitted` у мості додавай, лише якщо це дешево. Інакше пропусти й напиши про це у звіті.
+### B. #3 — тест на «злипання» значень
+- `injectAIAnswers` (`content.js` ~L1921), багатополева карта відповідей: `"$3,500/month"` в одне поле, `"No"` у сусіднє (радіо чи select).
+- Перевір, що значення не потрапляють у сусідні поля. У стару помилку виходило `"$3,500/monthNo"`. Якщо знайдеш баг, виправ корінь у шляху `injectAIAnswers`.
 
-### 3. #4 — стабільні `fieldId`
-- Зараз `content.js` ~L1108 дає `field_${index}_...`, а індекс міняється між викликами.
-- Зроби id стабільним в межах форми: хеш від label + DOM-шлях. Пошук за label має працювати як раніше.
-- Тест: два послідовні скани тієї самої форми, навіть після видалення одного поля з початку, дають однакові id для решти.
+### C. #7 — лічильники символів на сторінці
+- У `scanFormFields` (`content.js` ~L961): коли в поля немає `maxLength`/`minLength`, прочитай ліміт із лічильника поруч (`0/1000`, «n characters left», «Max 500 characters»).
+- Атрибут має пріоритет над лічильником.
+- Тест на фікстурі з кількома форматами лічильників.
+- `fill_job_form` відмовляє зрозумілою помилкою, якщо текст довший (вже є для атрибута, див. `content.js` ~L1945). Тест на лічильник теж.
 
-### 4. #3 — тест на «злипання» значень
-- Додай тест для `injectAIAnswers` (`content.js` ~L1921) з багатополевою картою відповідей, наприклад `"$3,500/month"` і `"No"` у сусідніх полях.
-- Перевір, що значення не потрапляють у сусідні поля. Якщо знайдеш баг, виправ корінь.
+### D. #6 — загальний обробник кастомних dropdown
+- Кастомні select («Where did you hear about us» та подібні) зараз дають `notFound` і зникають із `get_form_state`.
+- Алгоритм: клік по тригеру, зчитати опції з DOM, вибрати за текстом. Фінальний Submit не чіпати.
+- Такі поля мають з'являтись у `get_active_job_form` (з `options`) і в `get_form_state`.
+- Тест на фікстурі: поле з'являється з опціями, `fill_job_form` обирає вказану, `get_form_state` показує обране значення. Для невідомої опції — зрозуміла помилка зі списком доступних (за зразком `didYouMean`).
 
-### 5. #5 — діагностика порту і статус резюме
-- `server/bridge-server.js` ~L363: коли порт зайнятий, друкуй PID і команду власника (`lsof -nP -iTCP:PORT -sTCP:LISTEN` через `child_process`). Якщо `lsof` упаде, виведи попереднє повідомлення.
-- `autofill_static_fields` має явно повертати `resume: "attached"` або `{ failed: "<reason>" }`.
-
-### 6. #7 — лічильники символів на сторінці
-- Коли в поля немає атрибута `maxLength`/`minLength`, прочитай ліміт із лічильника на сторінці (формати на кшталт `0/1000`, «n characters left») у `scanFormFields` (`content.js` ~L961).
-- Додай тест на фікстурі.
-
-### 7. #6 — загальний обробник кастомних dropdown
-- Кастомні select (наприклад «Where did you hear about us») зараз дають `notFound` і зникають із `get_form_state`.
-- Зроби так: клік по тригеру, зчитати опції з DOM, вибрати за текстом. Такі поля мають з'являтись у `get_active_job_form` та `get_form_state`.
-- Тест на фікстурі.
+### E. Необов'язково, якщо дешево
+- Подія `form-submitted` у мості, яку агент може прочитати. Інакше пропусти й напиши про це у звіті.
 
 ## Звіт
-Для кожного пункту напиши `done` або `skipped (чому)`. Додай підсумок `npm test`.
+Для кожного пункту напиши `done` або `skipped (чому)`. Додай підсумок `npm test` до і після.

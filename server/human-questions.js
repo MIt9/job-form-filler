@@ -45,8 +45,8 @@ function classifyQuestionKind(label) {
   const t = String(label || "").toLowerCase();
   if (/gender|race|ethnicity|veteran|disability|eeo/i.test(t)) return "eeo";
   if (/authoriz|sponsor|visa|work permit/i.test(t)) return "authorization";
-  if (isHumanRequiredQuestion({ label })) return "behavioral";
   if (/why (this|us|now)|tell us about|describe a/i.test(t)) return "motivational";
+  if (isHumanRequiredQuestion({ label })) return "behavioral";
   return "factual";
 }
 

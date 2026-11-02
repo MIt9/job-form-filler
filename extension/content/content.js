@@ -45,8 +45,12 @@
     let node = el;
     for (let i = 0; i < 4 && node; i++) {
       const txt = (node.textContent || "");
-      const m = txt.match(/\b(\d+)\s*\/\s*(\d{2,})\b/);
+      let m = txt.match(/\b(\d+)\s*\/\s*(\d{2,})\b/);
       if (m) return parseInt(m[2], 10);
+      m = txt.match(/max(?:imum)?\s*(\d{2,})\s*char/i);
+      if (m) return parseInt(m[1], 10);
+      m = txt.match(/(\d{2,})\s*char(?:acters)?\s*(?:max|maximum|left)/i);
+      if (m) return parseInt(m[1], 10);
       node = node.parentElement;
     }
     return undefined;
@@ -1135,6 +1139,15 @@
           value: opt.value,
           text: opt.text.trim()
         }));
+      } else if (isCombobox) {
+        const lc = el.getAttribute("aria-controls") || el.getAttribute("aria-owns");
+        const lb = lc ? document.getElementById(lc) : el.parentElement?.querySelector('[role="listbox"]');
+        if (lb) {
+          options = Array.from(lb.querySelectorAll('[role="option"], li, option')).map((opt) => ({
+            value: (opt.getAttribute("data-value") || opt.textContent || "").trim(),
+            text: (opt.textContent || "").trim()
+          })).filter((o) => o.text);
+        }
       }
 
       const fieldData = {
