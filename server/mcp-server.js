@@ -176,7 +176,8 @@ const TOOLS = [
           description: "Map of fieldId to answer text",
           additionalProperties: { type: "string" }
         },
-        tabId: { type: "number", description: "Optional Chrome tab id to target (from open_job_url); defaults to active tab" }
+        tabId: { type: "number", description: "Optional Chrome tab id to target (from open_job_url); defaults to active tab" },
+        dryRun: { type: "boolean", description: "If true, preview what would be written without writing" }
       },
       required: ["answers"]
     }
@@ -271,6 +272,16 @@ const TOOLS = [
     inputSchema: { type: "object", properties: { tabId: { type: "number", description: "Optional Chrome tab id to target (from open_job_url); defaults to active tab" } } }
   },
   {
+    name: "export_application_record",
+    description: "Builds a JSON record of the current application tab: company, role, url, platform, answersFilled, gaps, salary, submittedAt. For the user's Notes tracker.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "number", description: "Optional Chrome tab id to target" }
+      }
+    }
+  },
+  {
     name: "get_form_state",
     description: "Every field of the application form with its CURRENT value (filled and empty), unlike get_active_job_form which lists only empty fields. Use it after autofill / fill_job_form to verify what is really in the form (a page may re-parse the resume and wipe fields). Returns [{fieldId, label, type, required, filled, value}]; passwords are masked, files show file names, checkbox/radio groups list the checked option labels.",
     inputSchema: {
@@ -347,7 +358,7 @@ async function callTool(name, args = {}) {
       return form;
     }
     case "fill_job_form":
-      return callBridge("FILL_FORM", { answers: args.answers, tabId: args.tabId });
+      return callBridge("FILL_FORM", { answers: args.answers, tabId: args.tabId, dryRun: !!args.dryRun });
     case "get_form_state":
       return callBridge("GET_FORM_STATE", { maxValueLength: args.maxValueLength || 120, includeEmpty: args.includeEmpty !== false, tabId: args.tabId });
     case "click_button": {
@@ -359,6 +370,21 @@ async function callTool(name, args = {}) {
 
     case "get_submission_status":
       return callBridge("GET_SUBMISSION_STATUS", { tabId: args.tabId });
+    case "export_application_record": {
+      const form = await callBridge("GET_ACTIVE_FORM", { full: false, tabId: args.tabId });
+      const state = await callBridge("GET_FORM_STATE", { maxValueLength: 500, includeEmpty: true, tabId: args.tabId });
+      const filled = (state || []).filter((f) => f.filled);
+      return {
+        company: form.company || null,
+        role: form.jobTitle || null,
+        url: form.url || null,
+        platform: form.platform || null,
+        answersFilled: filled.map((f) => ({ fieldId: f.fieldId, label: f.label, value: f.value })),
+        gapsDisclosed: (form.questions || []).filter((q) => q.humanRequired).map((q) => q.label),
+        salary: filled.find((f) => /salary|зарплат/i.test(f.label))?.value || null,
+        submittedAt: new Date().toISOString()
+      };
+    }
     case "update_candidate_profile":
       return callBridge("SET_PROFILE", { patch: args.patch, overwrite: !!args.overwrite });
     case "attach_resume": {

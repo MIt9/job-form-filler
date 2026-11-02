@@ -500,7 +500,8 @@ async function handleBridgeMessage(message) {
     } else if (command === "FILL_FORM") {
       const results = await broadcastToAllFrames(activeTab, {
         action: "INJECT_AI_ANSWERS",
-        answers: payload.answers
+        answers: payload.answers,
+        dryRun: !!payload.dryRun
       });
       const filled = results.flatMap((r) => r.filled || []);
       sendBridgeResponse(requestId, {

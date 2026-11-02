@@ -2284,6 +2284,7 @@
         break;
 
       case "INJECT_AI_ANSWERS":
+        if (message.dryRun) { sendResponse({ success: true, dryRun: true, wouldWrite: message.answers }); break; }
         // background.js FILL_FORM sends INJECT_AI_ANSWERS, so the Djinni path must live here too.
         if (isDjinniVacancyPage()) {
           sendResponse(fillDjinniForm(message.answers));
