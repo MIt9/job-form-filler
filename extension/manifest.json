@@ -12,6 +12,7 @@
     "alarms",
     "webNavigation"
   ],
+  "optional_host_permissions": ["<all_urls>"],
   "host_permissions": [
     "*://*.ashbyhq.com/*",
     "*://*.greenhouse.io/*",

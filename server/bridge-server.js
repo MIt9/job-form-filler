@@ -352,7 +352,7 @@ function startBridgeServer() {
   // Several MCP clients can each spawn this process; the first owns the port, the rest reuse it over HTTP.
   server.on("error", (err) => {
     if (err.code !== "EADDRINUSE") throw err;
-    console.error(`[Bridge Server] Port ${PORT} already in use — reusing the running bridge`);
+    console.error(`[Bridge Server] Port ${PORT} already in use — reusing the running bridge. Find owner: lsof -nP -iTCP:${PORT} -sTCP:LISTEN`);
   });
 
   server.listen(PORT, "127.0.0.1", () => {

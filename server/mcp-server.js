@@ -305,7 +305,8 @@ async function getCandidateProfile(profileKey) {
     resumeFileName,
     activeVariant: key || null,
     availableVariants: [...new Set([...repo.availableProfiles, ...Object.keys(candidateData?.profiles || {})])],
-    resume: variant ? { title: variant.title, summary: variant.summary, markdown: variant.fullMarkdown } : null
+    resume: variant ? { title: variant.title, summary: variant.summary, markdown: variant.fullMarkdown } : null,
+    answerBank: variant?.answerBank || candidateData?.profiles?.[key]?.answerBank || null
   };
 }
 
@@ -443,8 +444,6 @@ async function runMcpServer() {
     const { name, arguments: args } = request.params;
     try {
       const result = await callTool(name, args);
-      const warning = await bridgeConfigWarning();
-      if (warning && result && typeof result === "object" && !Array.isArray(result)) result.warning = warning;
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
       return { isError: true, content: [{ type: "text", text: `${name} failed: ${err.message}` }] };
