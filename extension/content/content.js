@@ -35,6 +35,33 @@
       .trim();
   }
 
+  function stableFieldHash(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+    return (h >>> 0).toString(16);
+  }
+
+  function findCharLimit(el) {
+    let node = el;
+    for (let i = 0; i < 4 && node; i++) {
+      const txt = (node.textContent || "");
+      const m = txt.match(/\b(\d+)\s*\/\s*(\d{2,})\b/);
+      if (m) return parseInt(m[2], 10);
+      node = node.parentElement;
+    }
+    return undefined;
+  }
+
+  function stableDomPath(el) {
+    const parts = [];
+    let cur = el;
+    while (cur && cur.nodeType === 1 && cur !== document.body && cur !== document.documentElement) {
+      parts.unshift(cur.tagName.toLowerCase());
+      cur = cur.parentElement;
+    }
+    return parts.join(">");
+  }
+
   function findLearnedAnswer(fullIdOrLabel) {
     if (!learnedAnswers || Object.keys(learnedAnswers).length === 0) return null;
     const targetNorm = normalizeQuestion(fullIdOrLabel);
@@ -550,13 +577,20 @@
       const group = Array.from(document.querySelectorAll(DJ.quiz)).filter((x) => x.name === el.name);
       const labelOf = (x) => djText(x.id && document.querySelector(`label[for="${CSS.escape(x.id)}"]`));
       const isChoice = el.type === "radio" || el.type === "checkbox";
+      const qLabel = isChoice ? djText(el.closest(".mb-3, fieldset")?.querySelector("legend, .form-label, label")) : labelOf(el);
+      const qKind = /gender|race|ethnicity|veteran|disability|eeo/i.test(qLabel) ? "eeo"
+        : /authoriz|sponsor|visa|work permit/i.test(qLabel) ? "authorization"
+        : /tell us about|describe a|помил/i.test(qLabel) ? "behavioral"
+        : /why (this|us|now)/i.test(qLabel) ? "motivational"
+        : "factual";
       const q = {
         fieldId: el.name,
-        label: isChoice ? djText(el.closest(".mb-3, fieldset")?.querySelector("legend, .form-label, label")) : labelOf(el),
+        label: qLabel,
         type: el.tagName === "SELECT" ? "select" : el.tagName === "TEXTAREA" ? "textarea" : el.type === "radio" ? "radio" : el.type === "checkbox" ? "checkbox-group" : el.type || "text",
         required: group.some((x) => x.required),
         value: isChoice ? group.filter((x) => x.checked).map(labelOf).join(", ") : el.value,
-        humanRequired: true,
+        kind: qKind,
+        humanRequired: qKind !== "factual",
         knockout: true
       };
       if (el.tagName === "SELECT") q.options = Array.from(el.options).map((o) => o.text.trim()).filter(Boolean);
@@ -1023,7 +1057,7 @@
           const fullIdentifier = `${groupQuestionLabel} | ${el.name || ""} | checkbox-group`.toLowerCase();
           const group = {
             element: el,
-            fieldId: `checkbox_group_${el.name || index}`,
+            fieldId: `checkbox_group_${el.name ? el.name : stableFieldHash(label + '|' + stableDomPath(el))}`,
             selector: getElementSelector(el),
             tagName: "input",
             type: "checkbox-group",
@@ -1063,7 +1097,7 @@
 
           fields.push({
             element: el,
-            fieldId: `radio_group_${el.name || index}`,
+            fieldId: `radio_group_${el.name ? el.name : stableFieldHash(label + '|' + stableDomPath(el))}`,
             groupKey: groupKey,
             selector: getElementSelector(el),
             tagName: "input",
@@ -1105,7 +1139,7 @@
 
       const fieldData = {
         element: el,
-        fieldId: `field_${index}${id || name ? "_" + (id || name).slice(0, 40) : ""}`,
+        fieldId: `field_${stableFieldHash(label + '|' + stableDomPath(el))}`,
         selector: getElementSelector(el),
         tagName: el.tagName.toLowerCase(),
         type: type,
@@ -1115,7 +1149,7 @@
         placeholder: el.placeholder || "",
         required: el.required || el.getAttribute("aria-required") === "true",
         defaultChecked: !!el.defaultChecked,
-        maxLength: el.maxLength > 0 ? el.maxLength : undefined,
+        maxLength: el.maxLength > 0 ? el.maxLength : findCharLimit(el),
         minLength: el.minLength > 0 ? el.minLength : undefined,
         value: el.value || el.innerText || "",
         options: options,
@@ -1142,7 +1176,7 @@
 
         const toggleField = {
           element: container,
-          fieldId: `toggle_pair_${cIdx}`,
+          fieldId: `toggle_pair_${stableFieldHash(questionLabel + '|' + stableDomPath(container))}`,
           selector: getElementSelector(container),
           tagName: "div",
           type: "toggle-checkbox-pair",
@@ -1832,6 +1866,12 @@
 
     report.filledCount = report.filled.length;
     report.language = formLang;
+    const resumeFailed = report.failed.find((f) => f.key === "resumeFile");
+    report.resume = report.filled.some((f) => f.key === "resumeFile")
+      ? "attached"
+      : resumeFailed
+        ? { failed: resumeFailed.reason || "resume not attached" }
+        : { failed: "no resume input found" };
     return report;
   }
 
@@ -2104,7 +2144,9 @@
     const djinniAppliedText = isDjinniVacancyPage() && /ви вже відгукнулись на цю вакансію/i.test(fullText);
 
     const textHit = djinniAppliedText || successKeywords.some((pattern) => pattern.test(text) || headings.some((h) => pattern.test(h)));
-    const urlHit = H.fhSubmissionByUrl(resolvedUrl) || djinniAppliedUrl;
+    const douSubmitted = /jobs\.dou\.ua/i.test(resolvedUrl) && (/[?&]sent(?:=|&|#|$)/i.test(resolvedUrl) || /#replied-/i.test(resolvedUrl));
+    const ghSubmitted = /greenhouse/i.test(resolvedUrl) && /\/confirmation\b/i.test(resolvedUrl);
+    const urlHit = H.fhSubmissionByUrl(resolvedUrl) || djinniAppliedUrl || douSubmitted || ghSubmitted;
     const isSubmitted = urlHit || textHit;
 
     // Djinni: already-applied block is a distinct state from the post-submit banner

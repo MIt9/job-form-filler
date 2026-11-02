@@ -46,7 +46,7 @@ function load() {
     const form = await send({ action: "GET_JOB_AND_QUESTIONS", full: true });
     assert.strictEqual(form.formClosed, false);
     assert.deepStrictEqual(Array.from(form.questions, (q) => q.fieldId), ["answer_101", "answer_102", "answer_103", "answer_104"]);
-    assert.ok(form.questions.every((q) => q.humanRequired && q.type === "textarea" && q.label));
+    assert.ok(form.questions.every((q) => q.knockout && q.type === "textarea" && q.label));
     const resume = form.fields.find((f) => f.fieldId === "djinni_resume");
     assert.deepStrictEqual(Array.from(resume.options), ["candidate.pdf", "Не показувати резюме"]);
     assert.strictEqual(resume.value, "candidate.pdf");

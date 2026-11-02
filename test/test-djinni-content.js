@@ -154,7 +154,8 @@ console.log("▶ Testing Djinni content-script integration against the real logg
     assert.strictEqual(q.label, "English How many years of commercial experience do you have with AI integration?");
     assert.strictEqual(q.type, "number");
     assert.strictEqual(q.required, true);
-    assert.strictEqual(q.humanRequired, true);
+    assert.strictEqual(q.humanRequired, false);
+    assert.strictEqual(q.kind, "factual");
     assert.strictEqual(q.knockout, true);
 
     const fill = await p.send({ action: "INJECT_AI_ANSWERS", answers: { answer_169876: "4" } });
@@ -180,7 +181,7 @@ console.log("▶ Testing Djinni content-script integration against the real logg
     openForm(p);
     const r = await p.send({ action: "GET_ACTIVE_FORM" });
     assert.deepStrictEqual(Array.from(r.questions).map((q) => q.fieldId), ["answer_169876", "answer_2", "answer_3", "answer_4"]);
-    assert.ok(r.questions.every((q) => q.humanRequired));
+    assert.ok(r.questions.every((q) => q.knockout));
     assert.deepStrictEqual(Array.from(r.questions[2].options), ["--", "Junior", "Senior"]);
     assert.deepStrictEqual(Array.from(r.questions[3].options), ["Так", "Ні"]);
     const fill = await p.send({ action: "INJECT_AI_ANSWERS", answers: { answer_2: "Because", answer_3: "Senior", answer_4: "Ні" } });

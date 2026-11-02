@@ -7,7 +7,7 @@ const {
 
 const { loadProfiles, DEFAULT_RESUME_REPO_PATH } = require("./profile-loader.js");
 const { saveApplication } = require("./app-saver.js");
-const { isHumanRequiredQuestion } = require("./human-questions.js");
+const { isHumanRequiredQuestion, classifyQuestionKind } = require("./human-questions.js");
 const { getJobPosting } = require("./job-posting.js");
 const { startBridgeServer } = require("./bridge-server.js");
 const { logApplication } = require("./log-application.js");
@@ -156,7 +156,7 @@ const TOOLS = [
   },
   {
     name: "get_active_job_form",
-    description: "Reads the active Chrome tab: job title, company, form language (ISO 639-1), job description and the still-empty questions [{fieldId, label, type, required, options?, humanRequired?, profileKey?}]. By default trims description to 3000 chars; pass full=true to get full text (capped at 30000). profileKey means a standard field whose value is missing from the profile.",
+    description: "Reads the active Chrome tab: job title, company, form language (ISO 639-1), job description and the still-empty questions [{fieldId, label, type, required, options?, humanRequired?, kind?, profileKey?}]. kind is one of factual|motivational|behavioral|eeo|authorization; factual answers can be filled from the profile/resume without human review, the others require the candidate. By default trims description to 3000 chars; pass full=true to get full text (capped at 30000). profileKey means a standard field whose value is missing from the profile.",
     inputSchema: {
       type: "object",
       properties: {
@@ -355,13 +355,8 @@ async function callTool(name, args = {}) {
     case "get_active_job_form": {
       const form = await callBridge("GET_ACTIVE_FORM", { full: !!args.full, tabId: args.tabId });
       (form.questions || []).forEach((q) => {
-        if (isHumanRequiredQuestion(q)) q.humanRequired = true;
-        const t = `${q.label || ""}`.toLowerCase();
-        if (q.humanRequired) q.kind = "behavioral";
-        else if (/gender|race|ethnicity|veteran|disability|eeo/i.test(t)) q.kind = "eeo";
-        else if (/authoriz|sponsor|visa|work permit/i.test(t)) q.kind = "authorization";
-        else if (/why (this|us|now)|tell us about|describe a/i.test(t)) q.kind = "motivational";
-        else q.kind = "factual";
+        q.kind = classifyQuestionKind(q.label);
+        q.humanRequired = q.kind !== "factual";
       });
       form.needsHumanDecision = (form.questions || [])
         .filter((q) => q.humanRequired || q.type === "consent" || q.kind === "motivational" || q.kind === "behavioral")
