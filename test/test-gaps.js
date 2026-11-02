@@ -124,5 +124,34 @@ function load(html, url = "https://example.com/apply") {
     console.log("✔ char counters and refusal");
   }
 
+  // D) plain-div custom dropdown: found, filled by option text, value read back, unknown option fails
+  {
+    const p = load(`<body><form>
+      <label for="n">Name</label><input id="n">
+      <div class="field"><label>Where did you hear about us?</label>
+        <div class="custom-select" id="src" tabindex="0">Select...</div>
+        <ul id="menu" hidden><li>LinkedIn</li><li>Referral</li><li>Other</li></ul>
+      </div>
+      <nav><div class="nav-dropdown" tabindex="0">Menu</div></nav>
+    </form></body>`);
+    const d = p.document;
+    d.getElementById("src").addEventListener("click", () => { d.getElementById("menu").hidden = false; });
+    d.getElementById("menu").addEventListener("click", (e) => {
+      if (e.target.tagName === "LI") { d.getElementById("src").textContent = e.target.textContent; d.getElementById("menu").hidden = true; }
+    });
+    const fields = await p.send({ action: "SCAN_FIELDS" });
+    const f = fields.find((x) => /hear about us/i.test(x.label));
+    assert(f, `custom select listed, got ${JSON.stringify(fields.map((x) => x.label))}`);
+    assert(!fields.some((x) => /Menu/.test(x.label)), "nav dropdown ignored");
+    const bad = await p.send({ action: "INJECT_AI_ANSWERS", answers: { [f.fieldId]: "Billboard" } });
+    assert.strictEqual(bad.aiFilledCount, 0, JSON.stringify(bad));
+    const res = await p.send({ action: "INJECT_AI_ANSWERS", answers: { [f.fieldId]: "Referral" } });
+    assert.strictEqual(res.aiFilledCount, 1, JSON.stringify(res));
+    const state = (await p.send({ action: "GET_FORM_STATE", maxValueLength: 50, includeEmpty: true })).fields;
+    assert.strictEqual(state.find((x) => /hear about us/i.test(x.label)).value, "Referral");
+    p.close();
+    console.log("✔ custom div dropdown");
+  }
+
   console.log("✔ Gap tests passed!");
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -198,6 +198,44 @@
     el.dispatchEvent(new MouseEvent("click", opts));
   }
 
+  // Plain-div dropdown without ARIA: a focusable/button-like element whose class says select/dropdown and
+  // that holds no native control. Options only exist after it is opened, so they are read on fill.
+  const CUSTOM_SELECT_SELECTOR = "[tabindex='0'][class*='select' i], [tabindex='0'][class*='dropdown' i], [role='button'][class*='select' i], [role='button'][class*='dropdown' i]";
+  function isCustomSelect(el) {
+    return (
+      el.matches?.(CUSTOM_SELECT_SELECTOR) &&
+      !/^(input|select|textarea|button|a)$/i.test(el.tagName) &&
+      !el.querySelector("input, select, textarea") &&
+      !el.closest("nav, header, footer") &&
+      !/option|item|menu/i.test(el.className?.toString() || "")
+    );
+  }
+
+  // Clicks the trigger, reads the options that appear, clicks the one matching `value`.
+  async function selectCustomOption(trigger, value) {
+    dispatchUserClick(trigger);
+    const optSel = "[role='option'], li, [class*='option' i]";
+    const roots = [trigger.parentElement, document];
+    let opts = [];
+    for (let i = 0; i < 8 && !opts.length; i++) {
+      await sleep(100);
+      for (const root of roots) {
+        opts = Array.from(root.querySelectorAll(optSel)).filter(
+          (o) => o !== trigger && !trigger.contains(o) && (o.textContent || "").trim() && !o.querySelector(optSel)
+        );
+        if (opts.length) break;
+      }
+    }
+    const idx = pickOption(opts.map((o) => o.textContent.trim()), value);
+    if (idx < 0) {
+      dispatchUserClick(trigger); // close again
+      return false;
+    }
+    dispatchUserClick(opts[idx]);
+    trigger.setAttribute("data-autofill-highlight", "1");
+    return true;
+  }
+
   // Helper: Select option in Material-UI / custom Combobox & Autocomplete dropdowns
   // ITEM A FIX: Snapshot neighboring fields to detect/prevent text corruption
   // ITEM B FIX: Timeout protection and cap iterations on huge lists (3000+ cities)
@@ -1012,8 +1050,8 @@
   // Scan all form fields on page
   function scanFormFields() {
     let rawElements = Array.from(
-      document.querySelectorAll("input, textarea, select, [contenteditable='true'], [role='combobox'], .MuiSelect-select, button[aria-haspopup='listbox']")
-    );
+      document.querySelectorAll("input, textarea, select, [contenteditable='true'], [role='combobox'], .MuiSelect-select, button[aria-haspopup='listbox'], " + CUSTOM_SELECT_SELECTOR)
+    ).filter((el) => !el.matches(CUSTOM_SELECT_SELECTOR) || isCustomSelect(el));
     // Only the real application form: drop header/footer/nav/cookie/login/country-search noise, then
     // keep what is inside the detected form (unless that would leave almost nothing).
     rawElements = rawElements.filter((el) => !H.fhIsNoise(el));
@@ -1033,6 +1071,7 @@
       seenElements.add(el);
 
       const isCombobox =
+        isCustomSelect(el) ||
         el.getAttribute("role") === "combobox" ||
         el.classList.contains("MuiAutocomplete-input") ||
         el.classList.contains("select__input") ||
@@ -1765,6 +1804,13 @@
       return true;
     }
 
+    if (isCustomSelect(el)) {
+      for (const v of values.slice(0, 3)) {
+        if (await selectCustomOption(el, v)) return true;
+      }
+      return false;
+    }
+
     if (isComboboxEl(el) || ["country", "phoneDialCode"].includes(field.classification?.key)) {
       // Each miss waits for async options, so only the top few alternatives are tried.
       for (const v of values.slice(0, 3)) {
@@ -2054,6 +2100,10 @@
     if (el.tagName === "SELECT") return el.value ? el.options[el.selectedIndex]?.text.trim() || "" : "";
     // An unchecked checkbox may just be unanswered, so only "Yes" is learned.
     if (el.type === "checkbox") return el.checked ? "Yes" : "";
+    if (isCustomSelect(el)) {
+      const t = (el.textContent || "").trim();
+      return /^(select|choose|please select|оберіть|виберіть|—|-+)/i.test(t) ? "" : t;
+    }
     return String(el.value ?? "").trim();
   }
 
