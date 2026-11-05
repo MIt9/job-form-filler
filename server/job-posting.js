@@ -84,8 +84,8 @@ function extractRequirements(descriptionText) {
   let startIndex = -1;
   let endIndex = -1;
 
-  const reqHeadingRegex = /^(?:[#*_\s-]*)(?:(?:basic|minimum|key|role|core|job)\s+)?(?:requirements|qualifications)|must[- ]haves?|the profile\b|what you(?:'ll| will)? (?:bring|need)|what we(?:'re| are)? looking for|who you are|skills (?:&|and) experience/i;
-  const nextHeadingRegex = /^(?:[#*_\s-]*)(?:(?:preferred|bonus|nice to have)\s+(?:qualifications|skills)?|benefits|what we offer|perks|compensation|about (?:us|the team|the company)|responsibilities|what you(?:'ll| will)? do|how (?:to apply|we hire)|interview process|equal opportunity)/i;
+  const reqHeadingRegex = /^(?:[#*_\s-]*)(?:(?:basic|minimum|key|role|core|job)\s+)?(?:requirements|qualifications)|must[- ]haves?|the profile\b|what you(?:['’]ll| will)? (?:bring|need)|what we(?:['’]re| are)? looking for|who you are|skills (?:&|and) experience/i;
+  const nextHeadingRegex = /^(?:[#*_\s-]*)(?:(?:preferred|bonus|nice to have)\s+(?:qualifications|skills)?|benefits|what we offer|perks|compensation|about (?:us|the team|the company)|responsibilities|what you(?:['’]ll| will)? do|how (?:to apply|we hire)|interview process|equal opportunity)/i;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -211,6 +211,9 @@ function detectAdapter(parsedUrl) {
   }
   if (host === "djinni.co" || host.endsWith(".djinni.co")) {
     return "djinni";
+  }
+  if (host === "himalayas.app" || host === "www.himalayas.app") {
+    return "himalayas";
   }
   return "generic";
 }
@@ -653,7 +656,7 @@ async function fetchLeverPosting(parsedUrl, fetchImpl) {
 
       if (
         !requirementsFromList &&
-        /requirements|qualifications|what you(?:'ll| will)? (?:bring|need)|what we(?:'re| are)? looking for/i.test(heading)
+        /requirements|qualifications|what you(?:['’]ll| will)? (?:bring|need)|what we(?:['’]re| are)? looking for/i.test(heading)
       ) {
         requirementsFromList = formatted;
       }
@@ -778,6 +781,60 @@ async function fetchWorkablePosting(parsedUrl, fetchImpl) {
     descriptionText,
     requirementsText,
     questions: Array.isArray(data.questions) ? data.questions : [],
+    fetchedAt: new Date().toISOString()
+  };
+}
+
+/**
+ * Himalayas adapter. Job pages sit behind a Cloudflare challenge for plain HTTP, so read the
+ * public single-job API instead: https://himalayas.app/jobs/api/companies/{company}/jobs/{slug}
+ * (200 open, 410 closed, 404 never listed; 60 requests/min without a key).
+ * Himalayas does not expose the employer ATS link: applicationLink points back to himalayas.app.
+ */
+async function fetchHimalayasPosting(parsedUrl, fetchImpl) {
+  const m = parsedUrl.pathname.match(/^\/companies\/([^/]+)\/jobs\/([^/]+)\/?$/);
+  if (!m) {
+    throw new Error(`Invalid Himalayas URL "${parsedUrl.href}": expected himalayas.app/companies/{company}/jobs/{slug}`);
+  }
+  const [, company, slug] = m;
+  const apiUrl = `https://himalayas.app/jobs/api/companies/${company}/jobs/${slug}`;
+  const res = await fetchWithTimeout(apiUrl, fetchImpl, { headers: { Accept: "application/json" } });
+  if (res.status === 410) throw new Error(`Himalayas job is closed (HTTP 410): ${parsedUrl.href}`);
+  if (res.status === 404) throw new Error(`Himalayas job not found (HTTP 404, never listed by the API): ${parsedUrl.href}`);
+  if (!res.ok) throw new Error(`Himalayas API error: HTTP ${res.status} ${res.statusText}`);
+  const data = await res.json();
+  const job = data && data.job;
+  if (!job || !job.title) throw new Error(`Himalayas API returned no job for ${apiUrl}`);
+
+  const descriptionText = job.description ? htmlToPlainText(job.description) : "";
+  const restrictions = Array.isArray(job.locationRestrictions) ? job.locationRestrictions : [];
+  // Long lists (some jobs list ~250 countries) would waste tokens in summaries; the full list stays in locationRestrictions.
+  const location = restrictions.length > 10 ? `${restrictions.length} countries` : restrictions.join(", ");
+
+  let compensation = null;
+  if (job.minSalary || job.maxSalary) {
+    const range = job.minSalary && job.maxSalary && job.minSalary !== job.maxSalary
+      ? `${job.minSalary}–${job.maxSalary}`
+      : String(job.minSalary || job.maxSalary);
+    compensation = [range, job.currency, job.salaryPeriod].filter(Boolean).join(" ");
+  }
+
+  return {
+    source: "himalayas",
+    url: job.guid || `https://himalayas.app/companies/${company}/jobs/${slug}`,
+    title: job.title,
+    company: job.companyName || company,
+    location,
+    locationRestrictions: restrictions,
+    remote: null, // the API has no explicit remote flag; do not infer it from the board's positioning
+    compensation,
+    employmentType: job.employmentType || null,
+    seniority: Array.isArray(job.seniority) ? job.seniority : [],
+    postedAt: typeof job.pubDate === "number" ? new Date(job.pubDate * 1000).toISOString() : null,
+    expiresAt: typeof job.expiryDate === "number" ? new Date(job.expiryDate * 1000).toISOString() : null,
+    descriptionText,
+    requirementsText: extractRequirements(descriptionText),
+    questions: [],
     fetchedAt: new Date().toISOString()
   };
 }
@@ -1259,6 +1316,9 @@ async function getJobPosting(url, { fetchImpl = fetch, summary = false } = {}) {
       break;
     case "djinni":
       posting = await fetchDjinniPosting(finalParsed, fetchImpl);
+      break;
+    case "himalayas":
+      posting = await fetchHimalayasPosting(finalParsed, fetchImpl);
       break;
     default:
       posting = await fetchGenericPosting(finalParsed, fetchImpl, { preloadedHtml });

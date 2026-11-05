@@ -133,7 +133,7 @@ const TOOLS = [
   },
   {
     name: "get_job_posting",
-    description: "Fetches and normalizes a job posting from any ATS (Ashby, Greenhouse, Lever, Workable) or HTML/JSON-LD; use summary:true when screening vacancies (small output); use default for application materials.Returns {source, url, title, company, location, remote, compensation, descriptionText, requirementsText, questions, fetchedAt}. Does not require an open tab.",
+    description: "Fetches and normalizes a job posting from any ATS (Ashby, Greenhouse, Lever, Workable), Djinni, Himalayas (via its public API) or HTML/JSON-LD; use summary:true when screening vacancies (small output); use default for application materials.Returns {source, url, title, company, location, remote, compensation, descriptionText, requirementsText, questions, fetchedAt}. Does not require an open tab.",
     inputSchema: {
       type: "object",
       properties: {
