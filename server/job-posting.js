@@ -735,6 +735,15 @@ async function fetchWorkablePosting(parsedUrl, fetchImpl) {
     throw new Error(`Invalid Workable URL "${parsedUrl.href}": missing shortcode`);
   }
 
+  // Shortlink apply.workable.com/j/{code}: the account-less widget endpoint now answers 404, but the shortlink
+  // itself 301-redirects to /{account}/j/{code} (checked 2026-11-05), so read the account from that redirect.
+  if (!account) {
+    const hop = await fetchWithTimeout(`https://apply.workable.com/j/${encodeURIComponent(shortcode)}`, fetchImpl, { redirect: "manual" });
+    const location = hop.headers?.get ? hop.headers.get("location") : null;
+    const m = location && new URL(location, "https://apply.workable.com").pathname.match(/^\/([^/]+)\/j\/([^/]+)/);
+    if (m && m[1] !== "j") account = safeDecode(m[1]);
+  }
+
   let apiUrl;
   if (account) {
     apiUrl = `https://apply.workable.com/api/v2/accounts/${encodeURIComponent(account)}/jobs/${encodeURIComponent(shortcode)}`;
