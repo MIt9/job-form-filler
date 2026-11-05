@@ -410,6 +410,12 @@ async function resolveApplyUrl(url, { fetchImpl = fetch } = {}) {
       html = await finalRes.text();
     }
 
+    // An error page is not a posting: report it instead of parsing it (mocks without `ok` count as success).
+    if (finalRes.ok === false) {
+      if (isBotChallengeHtml(html)) throw botChallengeError(currentUrl);
+      throw new Error(`Fetch error: HTTP ${finalRes.status} ${finalRes.statusText || ""} for ${currentUrl}`.trim());
+    }
+
     const isAgg = isAggregatorHost(finalParsed);
     const isDou = isDouHost(finalParsed);
 
@@ -1129,6 +1135,24 @@ function extractDjinniMainContent(html) {
   return content;
 }
 
+/**
+ * Detects an anti-bot interstitial (Cloudflare "Just a moment..." / "Attention Required!") instead of the real page.
+ * Only challenge-page markers count: normal pages also load Cloudflare scripts (challenge-platform), so those do not.
+ */
+function isBotChallengeHtml(html) {
+  if (!html || typeof html !== "string") return false;
+  return /<title>\s*(?:Just a moment\.\.\.|Attention Required! \| Cloudflare)\s*<\/title>/i.test(html) || html.includes("window._cf_chl_opt");
+}
+
+function botChallengeError(url) {
+  const err = new Error(
+    `Bot challenge (Cloudflare) at ${url}: the page cannot be read over plain HTTP, so no posting text was extracted. ` +
+      "Open it in the user's Chrome with open_job_url and read it there (get_active_job_form); do not draft answers from this result."
+  );
+  err.code = "BOT_CHALLENGE";
+  return err;
+}
+
 async function fetchGenericPosting(parsedUrl, fetchImpl, { preloadedHtml } = {}) {
   let html = preloadedHtml;
 
@@ -1141,11 +1165,15 @@ async function fetchGenericPosting(parsedUrl, fetchImpl, { preloadedHtml } = {})
     });
 
     if (!res.ok) {
+      const body = typeof res.text === "function" ? await res.text().catch(() => "") : "";
+      if (isBotChallengeHtml(body)) throw botChallengeError(parsedUrl.href);
       throw new Error(`Generic fetch error: HTTP ${res.status} ${res.statusText}`);
     }
 
     html = await res.text();
   }
+
+  if (isBotChallengeHtml(html)) throw botChallengeError(parsedUrl.href);
 
   // 1. Try JSON-LD JobPosting
   const jsonLdRegex = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
@@ -1366,5 +1394,6 @@ module.exports = {
   detectAdapter,
   validateUrl,
   parseDjinniHtml,
-  parseDjinniSidebar
+  parseDjinniSidebar,
+  isBotChallengeHtml
 };
