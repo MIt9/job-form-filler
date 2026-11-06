@@ -152,6 +152,13 @@ function createMockFetch() {
     }
 
     // DOU test pages
+    if (urlStr.includes("jobs.dou.ua/companies/acme/vacancies/123")) {
+      return { ok: true, status: 200, url: urlStr, text: async () => `<!DOCTYPE html><html><head><meta property="og:site_name" content="DOU"></head><body>
+        <div class="l-n"><a href="/companies/acme/">Acme &amp; Co</a></div>
+        <h1 class="g-h2">Senior Engineer</h1><span class="place">Київ, віддалено</span>
+        <div class="b-typo vacancy-section"><p>Intro</p><div><h3>Required for this role</h3><ul><li>React experience</li></ul></div><h3>Your responsibilities</h3><p>Build things</p></div>
+        <p>Unrelated navigation</p></body></html>` };
+    }
     if (urlStr.includes("jobs.dou.ua/vacancies/internal-only")) {
       return {
         ok: true,
@@ -214,6 +221,27 @@ function createMockFetch() {
 }
 
 (async () => {
+  {
+    const result = await getJobPosting("https://jobs.dou.ua/companies/acme/vacancies/123/", { fetchImpl: createMockFetch() });
+    assert.strictEqual(result.company, "Acme & Co");
+    assert.strictEqual(result.location, "Київ, віддалено");
+    assert.strictEqual(result.remote, true);
+    assert.match(result.requirementsText, /React experience/);
+    assert.doesNotMatch(result.requirementsText, /Build things/);
+    assert.doesNotMatch(result.descriptionText, /Unrelated navigation/);
+    const summary = await getJobPosting("https://jobs.dou.ua/companies/acme/vacancies/123/", { fetchImpl: createMockFetch(), summary: true });
+    assert.match(summary.requirementsText, /React experience/);
+  }
+  {
+    const { extractRequirements } = require("../server/job-posting.js");
+    const ua = "ПРО РОЛЬ:\nРозробка\nОБОВ’ЯЗКИ:\nПисати код\nВИМОГИ:\n5+ років C++\nПРО НАС:\nКомпанія";
+    assert.strictEqual(extractRequirements(ua), "ВИМОГИ:\n5+ років C++");
+    const match = "У цій ролі ти будеш\nробити X\nНаш метч, якщо ти\nзнаєш Go\nБуде плюсом\nRust\nЩо ми пропонуємо\nвсе";
+    assert.strictEqual(extractRequirements(match), "Наш метч, якщо ти\nзнаєш Go");
+    assert.strictEqual(extractRequirements("Location: Remote\nYour expertise:\n3+ years Go\nWill definitely be a plus:\nK8s"), "Your expertise:\n3+ years Go");
+    // a bullet that merely mentions a word is not a heading
+    assert.strictEqual(extractRequirements("Вимоги:\n- пишемо про нас у блог щотижня, і це важливо для команди\nкінець"), "Вимоги:\n- пишемо про нас у блог щотижня, і це важливо для команди\nкінець");
+  }
   const fetchImpl = createMockFetch();
 
   // 1. Invalid URL rejection & SSRF validation

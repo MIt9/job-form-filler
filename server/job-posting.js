@@ -84,8 +84,8 @@ function extractRequirements(descriptionText) {
   let startIndex = -1;
   let endIndex = -1;
 
-  const reqHeadingRegex = /^(?:[#*_\s-]*)(?:(?:basic|minimum|key|role|core|job)\s+)?(?:requirements|qualifications)|must[- ]haves?|the profile\b|what you(?:['’]ll| will)? (?:bring|need)|what we(?:['’]re| are)? looking for|who you are|skills (?:&|and) experience/i;
-  const nextHeadingRegex = /^(?:[#*_\s-]*)(?:(?:preferred|bonus|nice to have)\s+(?:qualifications|skills)?|benefits|what we offer|perks|compensation|about (?:us|the team|the company)|responsibilities|what you(?:['’]ll| will)? do|how (?:to apply|we hire)|interview process|equal opportunity)/i;
+  const reqHeadingRegex = /^(?:[#*_\s-]*)(?:(?:basic|minimum|key|role|core|job)\s+)?(?:requirements|qualifications)|required for (?:this |the )?role|must[- ]haves?|the profile\b|what you(?:['’]ll| will)? (?:bring|need)|what we(?:['’]re| are)? looking for|who you are|your expertise|skills (?:&|and) experience|^(?:[#*_\s-]*)(?:вимоги|(?:що )?(?:ми )?очікуємо|кого (?:ми )?шукаємо|наш метч)/i;
+  const nextHeadingRegex = /^(?:[#*_\s-]*)(?:(?:preferred|bonus|nice to have)\s+(?:qualifications|skills)?|benefits|what we offer|perks|compensation|about (?:us|the team|the company)|(?:your )?responsibilities|what you(?:['’]ll| will)? do|how (?:to apply|we hire)|interview process|equal opportunity|will (?:definitely )?be a plus|what['’]s in it for you|you will be involved|обов['’]язки|(?:що )?(?:ми )?пропонуємо|про нас|про компанію|про про[єе]кт|буде (?:плюсом|перевагою)|у цій ролі ти)/i;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -1261,6 +1261,33 @@ async function fetchGenericPosting(parsedUrl, fetchImpl, { preloadedHtml } = {})
       questions: [],
       fetchedAt: new Date().toISOString()
     };
+  }
+
+  // DOU's company and location are in the vacancy markup, not og:site_name.
+  if (isDouHost(parsedUrl)) {
+    const titleMatch = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
+    const companyMatch = html.match(/<div\b[^>]*class=["'][^"']*\bl-n\b[^"']*["'][^>]*>[\s\S]*?<a\b[^>]*>([\s\S]*?)<\/a>/i);
+    const locationMatch = html.match(/<span\b[^>]*class=["'][^"']*\bplace\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/i);
+    const sectionStart = /<div\b[^>]*class=["'][^"']*\bvacancy-section\b[^"']*["'][^>]*>/i.exec(html);
+    if (titleMatch && sectionStart) {
+      const start = sectionStart.index + sectionStart[0].length;
+      const divs = /<\/?div\b[^>]*>/gi;
+      divs.lastIndex = start;
+      let depth = 1, tag;
+      while ((tag = divs.exec(html))) {
+        depth += /^<\//.test(tag[0]) ? -1 : 1;
+        if (depth === 0) break;
+      }
+      if (tag) {
+        const descriptionText = htmlToPlainText(html.slice(start, tag.index));
+        const location = locationMatch ? htmlToPlainText(locationMatch[1]) : "";
+        return { source: "dou", url: parsedUrl.href, title: htmlToPlainText(titleMatch[1]),
+          company: companyMatch ? htmlToPlainText(companyMatch[1]) : "", location,
+          remote: /(?:віддалено|remote)/i.test(location) ? true : null,
+          compensation: null, descriptionText, requirementsText: extractRequirements(descriptionText),
+          questions: [], fetchedAt: new Date().toISOString() };
+      }
+    }
   }
 
   // 2. Fallback to HTML heuristic extraction
