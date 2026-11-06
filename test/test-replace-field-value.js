@@ -66,4 +66,11 @@ replaceFieldValue(noExec, "Plain");
 global.document = realDoc;
 assert.strictEqual(noExec.value, "Plain", "must fall back to the property setter without execCommand");
 
+// Rich-text editor (contenteditable): text lives in textContent, there is no .value.
+const rte = { tagName: "DIV", isContentEditable: true, textContent: "old", focus() {}, dispatchEvent() {}, setAttribute() {}, getAttribute() { return "true"; } };
+active = null; // execCommand fails -> textContent fallback
+replaceFieldValue(rte, "Rich answer");
+assert.strictEqual(rte.textContent, "Rich answer", "contenteditable must be filled via textContent");
+assert.strictEqual(rte.value, undefined, "must not write a bogus .value on contenteditable");
+
 console.log("✔ replaceFieldValue tests passed!");

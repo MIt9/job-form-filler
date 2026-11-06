@@ -60,6 +60,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  // One-click, per-origin grant for the current tab (narrower than <all_urls>); needs this click as the user gesture.
+  const allowThisSite = document.getElementById("allow-this-site");
+  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+    let origin;
+    try { origin = new URL(tab.url).origin + "/*"; } catch (e) { return; }
+    if (!/^https?:/.test(origin)) return;
+    chrome.permissions.contains({ origins: [origin] }, (ok) => {
+      if (ok) return;
+      allowThisSite.hidden = false;
+      allowThisSite.addEventListener("click", () => {
+        chrome.permissions.request({ origins: [origin] }, (granted) => {
+          if (granted) { allowThisSite.hidden = true; chrome.tabs.reload(tab.id); }
+        });
+      });
+    });
+  });
+
   // State
   let activeTab = null;
   let jobData = null;

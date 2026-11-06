@@ -231,9 +231,11 @@ async function ensureContentScriptInjected(tab) {
     await new Promise((r) => setTimeout(r, 200));
     return true;
   } catch (err) {
+    let origin = "this site";
+    try { origin = new URL(url).origin; } catch (e) {}
     throw new Error(
       "Failed to inject content script: " + err.message +
-        " (enable 'Work on any website' in the extension popup Settings tab, then reload the tab)"
+        ` (no host permission for ${origin}. Open the tab, click the extension icon, press 'Allow this site' (or enable 'Work on any website' in Settings), then reload the tab)`
     );
   }
 }
@@ -344,7 +346,9 @@ async function handleBridgeMessage(message) {
       try {
         hasAccess = await chrome.permissions.contains({ origins: [`${new URL(url).origin}/*`] });
       } catch (e) { hasAccess = false; }
-      sendBridgeResponse(requestId, { success: true, data: { hasAccess, host, url } });
+      const data = { hasAccess, host, url };
+      if (!hasAccess) data.fix = `Open a tab on ${host}, click the extension icon and press 'Allow this site' (Chrome shows a permission prompt), then reload the tab.`;
+      sendBridgeResponse(requestId, { success: true, data });
       return;
     } else if (command === "FOCUS_TAB") {
       const { tabId, urlSubstring } = payload || {};

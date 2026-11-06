@@ -22,4 +22,7 @@ for (const file of ["background/background.js", "popup/popup.js"]) {
   assert(m, `${file} injects content scripts`);
   assert.strictEqual(JSON.stringify(JSON.parse(m[1])), list, `${file} injection list matches the manifest`);
 }
+assert.strictEqual((fs.readFileSync(path.join(ext, "manifest.json"), "utf8").match(/"optional_host_permissions"/g) || []).length, 1, "duplicate optional_host_permissions key");
+assert(fs.readFileSync(path.join(ext, "popup/popup.html"), "utf8").includes('id="allow-this-site"'), "popup has per-site grant button");
+assert(fs.readFileSync(path.join(ext, "popup/popup.js"), "utf8").includes("permissions.request({ origins: [origin] }"), "per-origin request");
 console.log("✔ Manifest tests passed!");

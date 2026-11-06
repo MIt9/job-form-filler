@@ -131,6 +131,29 @@
   function replaceFieldValue(element, value) {
     if (!element || value === undefined || value === null) return;
 
+    // Rich-text editors (PeopleForce/Trix/ProseMirror/Quill): no .value, text lives in the DOM.
+    if (element.isContentEditable || String(element.getAttribute?.("contenteditable")) === "true") {
+      element.focus();
+      try {
+        const sel = document.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } catch (e) {}
+      let ok = false;
+      try {
+        document.execCommand("delete");
+        ok = document.execCommand("insertText", false, String(value));
+      } catch (e) {}
+      if (!ok) element.textContent = String(value); // ponytail: frameworks that ignore DOM edits need execCommand to work
+      element.dispatchEvent(new Event("input", { bubbles: true }));
+      element.dispatchEvent(new Event("change", { bubbles: true }));
+      element.dispatchEvent(new Event("blur", { bubbles: true }));
+      element.setAttribute("data-autofill-highlight", "1");
+      return;
+    }
+
     // For text-like fields, explicitly clear first to prevent concatenation
     if (element.tagName !== "SELECT" && element.type !== "checkbox" && element.type !== "radio" && element.type !== "file") {
       // Clear the field completely before setting new value
@@ -1050,7 +1073,7 @@
   // Scan all form fields on page
   function scanFormFields() {
     let rawElements = Array.from(
-      document.querySelectorAll("input, textarea, select, [contenteditable='true'], [role='combobox'], .MuiSelect-select, button[aria-haspopup='listbox'], " + CUSTOM_SELECT_SELECTOR)
+      document.querySelectorAll("input, textarea, select, [contenteditable]:not([contenteditable='false']), trix-editor, [role='combobox'], .MuiSelect-select, button[aria-haspopup='listbox'], " + CUSTOM_SELECT_SELECTOR)
     ).filter((el) => !el.matches(CUSTOM_SELECT_SELECTOR) || isCustomSelect(el));
     // Only the real application form: drop header/footer/nav/cookie/login/country-search noise, then
     // keep what is inside the detected form (unless that would leave almost nothing).
