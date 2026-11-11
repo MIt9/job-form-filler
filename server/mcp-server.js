@@ -256,7 +256,7 @@ const TOOLS = [
   },
   {
     name: "click_button",
-    description: "Advances a multi-step form by clicking a NAVIGATION button. The label must exactly equal an allowed one (Continue, Next, Save and continue, Start application, Apply Now, Продовжити, Далі, ...); anything else is refused, and so is a matching button that also looks like Submit/Send/Apply/Confirm/Finish/Delete/Pay. It never submits: the user clicks the final Submit. Returns {success, clicked?, denied?, reason?, allowed?}.",
+    description: "Advances a multi-step form by clicking a NAVIGATION button. The label must exactly equal an allowed one (Continue, Next, Save and continue, Start application, Apply Now, Продовжити, Далі, ...; on jobs.dou.ua also Відгукнутися на вакансію, which only opens the inline form); anything else is refused, and so is a matching button that also looks like Submit/Send/Apply/Confirm/Finish/Delete/Pay. It never submits: the user clicks the final Submit. Returns {success, clicked?, denied?, reason?, allowed?}.",
     inputSchema: {
       type: "object",
       properties: {

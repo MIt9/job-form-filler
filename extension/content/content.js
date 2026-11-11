@@ -2329,6 +2329,25 @@
       ...(!formReady ? { reason: "Clicked, but fields are still hidden after waiting; re-read the form before filling" } : {}) };
   }
 
+  // DOU-only opener: the inline apply form (#replied-id / #reply-form) is in the DOM but display:none until the
+  // "Відгукнутися" link (href=#apply) is clicked. Only that anchor is clicked; the "Відправити" submit stays denied.
+  const DOU_OPENER_LABELS = ["відгукнутися", "відгукнутися на вакансію"];
+  const DOU_FORM_TEXTAREA = "#replied-id textarea, #reply-form textarea, form.replied textarea";
+  async function clickDouOpener(wanted) {
+    const norm = (s) => String(s || "").replace(/\s+/g, " ").trim().toLowerCase();
+    const ready = () => Array.from(document.querySelectorAll(DOU_FORM_TEXTAREA)).some((t) => !hasHiddenAncestor(t));
+    if (ready()) return { success: true, clicked: false, label: wanted, formClosed: false };
+    const opener = Array.from(document.querySelectorAll("a[href$='#apply']")).find((a) =>
+      norm(a.textContent) === wanted && !hasHiddenAncestor(a) && !NAV_DENIED_RE.test(norm(a.textContent)));
+    if (!opener) return { success: false, denied: false, reason: "DOU apply link (a[href$='#apply']) not found or hidden; not clicked" };
+    dispatchUserClick(opener);
+    const deadline = Date.now() + 2000;
+    while (!ready() && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 50));
+    const formReady = ready();
+    return { success: formReady, clicked: true, label: wanted, formClosed: !formReady,
+      ...(!formReady ? { reason: "Clicked, but the form is still hidden (login required?); re-read the form" } : {}) };
+  }
+
   function clickButton(text) {
     const norm = (s) => String(s || "").replace(/\s+/g, " ").trim().toLowerCase();
     const wanted = norm(text);
@@ -2340,6 +2359,7 @@
     // Check Djinni-specific allowlist — only valid on a Djinni vacancy page
     const djinniAllowed = DJINNI_NAV_ALLOWED.includes(wanted) && isDjinniVacancyPage();
     if (isDjinniVacancyPage() && (djinniAllowed || globalAllowed)) return clickDjinniButton(wanted);
+    if (/(^|\.)jobs\.dou\.ua$/i.test(window.location.hostname) && DOU_OPENER_LABELS.includes(wanted)) return clickDouOpener(wanted);
 
     if (!globalAllowed && !djinniAllowed) {
       // "надіслати відгук" (final submit) hits NAV_DENIED_RE → report denied:true
