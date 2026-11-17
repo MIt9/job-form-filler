@@ -14,6 +14,31 @@ let isConnected = false;
 let isConnecting = false;
 let lastOpenedTabId = null;
 
+// open_job_url tabs live in a dedicated window so they don't clutter the user's own window.
+// The window opens unfocused; "Find tab" in the popup (or focus_tab) brings it forward.
+const JFF_WINDOW_KEY = "jff_windowId";
+async function openInJffWindow(url) {
+  const { [JFF_WINDOW_KEY]: winId } = await chrome.storage.local.get(JFF_WINDOW_KEY);
+  if (winId != null && (await chrome.windows.get(winId).catch(() => null))) {
+    // Same URL already open (maybe half-filled): reuse it instead of a fresh, empty copy.
+    const bare = (u) => String(u || "").split("#")[0];
+    const same = (await chrome.tabs.query({ windowId: winId })).find((t) => bare(t.url) === bare(url));
+    if (same) return { ...(await chrome.tabs.update(same.id, { active: true })), reused: true };
+    return chrome.tabs.create({ windowId: winId, url, active: true });
+  }
+  const w = await chrome.windows.create({ url, focused: false, state: "normal", left: 40, top: 40, width: 1280, height: 900 });
+  await chrome.storage.local.set({ [JFF_WINDOW_KEY]: w.id });
+  return w.tabs[0];
+}
+// Window ids restart with the browser, so a stored id may point at one of the user's windows.
+const forgetJffWindow = () => chrome.storage.local.remove(JFF_WINDOW_KEY);
+chrome.windows.onRemoved.addListener(async (id) => {
+  const { [JFF_WINDOW_KEY]: winId } = await chrome.storage.local.get(JFF_WINDOW_KEY);
+  if (id === winId) await forgetJffWindow();
+});
+chrome.runtime.onStartup.addListener(forgetJffWindow);
+chrome.runtime.onInstalled.addListener(forgetJffWindow);
+
 function isValidHttpUrl(urlString) {
   if (!urlString || typeof urlString !== "string") return false;
   try {
@@ -314,14 +339,9 @@ async function handleBridgeMessage(message) {
       }
 
       const cleanUrl = url.trim();
-      const tab = await chrome.tabs.create({ url: cleanUrl, active: true });
-      if (tab.windowId) {
-        try {
-          await chrome.windows.update(tab.windowId, { focused: true });
-        } catch (e) {}
-      }
+      const tab = await openInJffWindow(cleanUrl);
 
-      await waitForTabComplete(tab.id, 15000);
+      if (!tab.reused) await waitForTabComplete(tab.id, 15000);
       lastOpenedTabId = tab.id;
 
       let finalUrl = tab.url || cleanUrl;
@@ -335,7 +355,8 @@ async function handleBridgeMessage(message) {
         data: {
           tabId: tab.id,
           windowId: tab.windowId,
-          url: finalUrl
+          url: finalUrl,
+          reused: !!tab.reused
         }
       });
     } else if (command === "CHECK_ACCESS") {

@@ -48,6 +48,40 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (m) el.title = m;
   });
 
+  // Tabs opened by open_job_url live in their own window (background.js openInJffWindow); "Find tab" brings one forward.
+  async function renderJffTabs() {
+    const list = document.getElementById("jff-tabs");
+    const { jff_windowId: winId } = await chrome.storage.local.get("jff_windowId");
+    const tabs = winId != null ? await chrome.tabs.query({ windowId: winId }).catch(() => []) : [];
+    list.replaceChildren();
+    if (!tabs.length) {
+      const li = document.createElement("li");
+      li.className = "jff-hint";
+      li.textContent = t("jffTabsEmpty") === "jffTabsEmpty" ? "No tabs yet; open_job_url creates one." : t("jffTabsEmpty");
+      return list.append(li);
+    }
+    for (const tab of tabs) {
+      const li = document.createElement("li");
+      li.style.cssText = "display:flex;gap:6px;align-items:center;margin:4px 0";
+      const title = document.createElement("span");
+      title.style.cssText = "flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+      title.textContent = tab.title || tab.url;
+      title.title = tab.url;
+      const find = document.createElement("button");
+      find.type = "button";
+      find.textContent = t("jffFindTab") === "jffFindTab" ? "Find tab" : t("jffFindTab");
+      find.onclick = async () => {
+        await chrome.windows.update(tab.windowId, { focused: true, state: "normal" });
+        await chrome.tabs.update(tab.id, { active: true });
+      };
+      li.append(title, find);
+      list.append(li);
+    }
+  }
+  renderJffTabs();
+  chrome.tabs.onUpdated.addListener(renderJffTabs);
+  chrome.tabs.onRemoved.addListener(renderJffTabs);
+
   // Optional host access for sites outside the built-in ATS list (requested on click, revocable in chrome://extensions).
   const allSites = { origins: ["<all_urls>"] };
   const allowAllSites = document.getElementById("allow-all-sites");

@@ -62,6 +62,7 @@ Workflow:
 Questions flagged humanRequired (motivation, "tell us about a time", personal tradeoffs) must be answered by the user — ask, do not write them.
 After autofill or fill_job_form, call get_form_state to verify what is really in the form (values, not just empty fields).
 click_button only advances navigation (Continue/Next); the final Submit is always the user's click.
+If a step fails, do NOT reopen the form via claude-in-chrome or a second open_job_url in another tool: that gives an empty copy. Keep using the same tabId (focus_tab / get_form_state); open_job_url on the same URL reuses the existing tab (reused: true).
 There is deliberately NO submit tool: the user reviews and clicks Submit. Afterwards get_submission_status confirms it.`;
 
 /**

@@ -51,7 +51,8 @@ async function loadBackground(page, tabUrl, iframe) {
   const noop = { addListener() {}, removeListener() {} };
   const chrome = {
     alarms: { create() {}, onAlarm: noop },
-    runtime: { onMessage: noop, sendMessage: () => Promise.resolve() },
+    runtime: { onMessage: noop, onStartup: noop, onInstalled: noop, sendMessage: () => Promise.resolve() },
+    windows: { onRemoved: noop },
     storage: { local: { get: async () => ({}), set: async () => {} } },
     tabs: {
       onActivated: noop, onUpdated: noop, onRemoved: noop,
