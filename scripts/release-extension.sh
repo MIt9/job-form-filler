@@ -1,6 +1,6 @@
 #!/bin/sh
 # Build Chrome Web Store zip from extension/ and tag it. Usage: npm run release:extension
-# Upload dist/job-form-filler-ext-<version>.zip manually at https://chrome.google.com/webstore/devconsole
+# Prints the Web Store links and opens dist/ at the end (upload the zip manually).
 set -eu
 cd "$(dirname "$0")/.."
 [ -z "$(git status --porcelain)" ] || { echo "working tree not clean"; exit 1; }
@@ -14,3 +14,6 @@ rm -f "$out"
 git tag "ext-v$v"
 git push origin HEAD "ext-v$v"
 echo "built $out"
+echo "Upload at: https://chrome.google.com/webstore/devconsole"
+echo "Listing:   https://chromewebstore.google.com/detail/job-form-filler/mldoeaodmjbjmkpnchkhaahpaphoffei"
+open dist 2>/dev/null || xdg-open dist 2>/dev/null || true
